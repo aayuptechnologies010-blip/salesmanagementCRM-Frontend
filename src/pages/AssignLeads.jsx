@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Shuffle, UserCheck, Users } from 'lucide-react';
+import { Shuffle, UserCheck, Users, Search } from 'lucide-react';
 import Card from '../components/shared/Card';
 import DataTable from '../components/shared/DataTable';
 import StatusBadge from '../components/shared/StatusBadge';
 import Modal from '../components/shared/Modal';
-import { Select, PrimaryButton, SecondaryButton } from '../components/shared/FormElements';
+import { Select, PrimaryButton, SecondaryButton, BadgeButton } from '../components/shared/FormElements';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,7 +16,22 @@ export default function AssignLeads() {
   const [modal, setModal] = useState(null);
   const [assignTo, setAssignTo] = useState('');
 
+  // Filter states
+  const [search, setSearch] = useState('');
+  const [filterAssignment, setFilterAssignment] = useState('All');
+  const [filterSource, setFilterSource] = useState('');
+
   const unassigned = leads.filter(l => !l.assignedTo);
+
+  const filteredLeads = leads.filter(l => {
+    const matchesSearch = l.name.toLowerCase().includes(search.toLowerCase()) || 
+                          l.company.toLowerCase().includes(search.toLowerCase());
+    const matchesAssignment = filterAssignment === 'All' ? true 
+                            : filterAssignment === 'Assigned' ? !!l.assignedTo 
+                            : !l.assignedTo;
+    const matchesSource = filterSource ? l.source === filterSource : true;
+    return matchesSearch && matchesAssignment && matchesSource;
+  });
 
   const handleBulkAssign = () => {
     if (!assignTo) return;
@@ -47,15 +62,17 @@ export default function AssignLeads() {
     { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
     {
       key: 'assignedTo', label: 'Assigned To', render: v => v
-        ? <span className="text-blue-600 font-medium">{v}</span>
-        : <span className="text-gray-400 italic">Unassigned</span>
+        ? <span className="text-blue-600 font-semibold">{v}</span>
+        : <span className="text-gray-400 italic text-xs">Unassigned</span>
     },
     {
       key: 'id', label: 'Action', render: (_, row) => (
-        <button onClick={() => { setSelected([row.id]); setAssignTo(''); setModal('single'); }}
-          className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg px-2.5 py-1 font-medium transition-colors">
-          Assign
-        </button>
+        <BadgeButton
+          color={row.assignedTo ? 'gray' : 'blue'}
+          onClick={() => { setSelected([row.id]); setAssignTo(''); setModal('single'); }}
+        >
+          {row.assignedTo ? 'Reassign' : 'Assign'}
+        </BadgeButton>
       )
     },
   ];
@@ -67,7 +84,7 @@ export default function AssignLeads() {
         {[
           { label: 'Total Leads', value: leads.length, icon: Users, color: 'bg-gray-100 text-gray-500' },
           { label: 'Assigned', value: leads.filter(l => l.assignedTo).length, icon: UserCheck, color: 'bg-blue-50 text-blue-500' },
-          { label: 'Unassigned', value: unassigned.length, icon: Users, color: 'bg-blue-100 text-blue-600' },
+          { label: 'Unassigned', value: unassigned.length, icon: Users, color: 'bg-orange-50 text-orange-500' },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="p-5 flex items-center gap-4">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
@@ -84,21 +101,54 @@ export default function AssignLeads() {
       {/* Actions */}
       <div className="flex flex-wrap gap-2 items-center">
         {selected.length > 0 && (
-          <PrimaryButton onClick={() => { setAssignTo(''); setModal('bulk'); }} className="flex items-center gap-1.5">
+          <PrimaryButton onClick={() => { setAssignTo(''); setModal('bulk'); }}>
             <UserCheck size={14} /> Bulk Assign ({selected.length})
           </PrimaryButton>
         )}
-        <SecondaryButton onClick={() => setModal('roundrobin')} className="flex items-center gap-1.5">
+        <SecondaryButton onClick={() => setModal('roundrobin')}>
           <Shuffle size={14} /> Round-Robin Auto Assign
         </SecondaryButton>
       </div>
 
       {/* Table */}
       <Card>
-        <div className="px-5 py-4 border-b border-gray-100">
-          <span className="text-sm font-semibold text-gray-700">All Leads — Assignment View</span>
+        <div className="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+          <span className="text-sm font-semibold text-gray-700">{filteredLeads.length} Leads — Assignment View</span>
         </div>
-        <DataTable columns={columns} data={leads} selectable onSelectionChange={setSelected} />
+
+        {/* Filter Toolbar */}
+        <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex flex-col sm:flex-row gap-3 items-center">
+          <div className="relative flex-1 min-w-48 w-full">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              placeholder="Search leads by name or company..."
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none bg-white" 
+            />
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <select 
+              value={filterAssignment} 
+              onChange={e => setFilterAssignment(e.target.value)}
+              className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+            >
+              <option value="All">All Assignment Status</option>
+              <option value="Assigned">Assigned Only</option>
+              <option value="Unassigned">Unassigned Only</option>
+            </select>
+            <select 
+              value={filterSource} 
+              onChange={e => setFilterSource(e.target.value)}
+              className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+            >
+              <option value="">All Sources</option>
+              {['Website', 'Referral', 'LinkedIn', 'Cold Call', 'Email Campaign', 'Conference'].map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <DataTable columns={columns} data={filteredLeads} selectable onSelectionChange={setSelected} />
       </Card>
 
       {/* Team Workload */}
@@ -138,21 +188,21 @@ export default function AssignLeads() {
         </Select>
         <div className="flex justify-end gap-2 mt-6">
           <SecondaryButton onClick={() => setModal(null)}>Cancel</SecondaryButton>
-          <PrimaryButton onClick={handleBulkAssign}>Assign</PrimaryButton>
+          <PrimaryButton onClick={handleBulkAssign}><UserCheck size={14} /> Assign</PrimaryButton>
         </div>
       </Modal>
 
       {/* Round Robin Modal */}
       <Modal isOpen={modal === 'roundrobin'} onClose={() => setModal(null)} title="Round-Robin Auto Assignment" size="sm">
         <div className="p-4 bg-blue-50 rounded-xl mb-4">
-          <p className="text-sm text-blue-700 font-medium">Auto-assign {unassigned.length} unassigned leads</p>
+          <p className="text-sm text-blue-700 font-semibold">Auto-assign {unassigned.length} unassigned leads</p>
           <p className="text-xs text-blue-500 mt-1">Leads will be distributed evenly across all Sales Executives.</p>
         </div>
         <div className="space-y-2">
           {teamMembers.filter(m => m.role === 'Sales Executive').map(m => (
             <div key={m.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
               <span className="text-sm text-gray-700">{m.name}</span>
-              <span className="text-xs text-blue-500 font-medium">
+              <span className="text-xs text-blue-500 font-semibold">
                 ~{teamMembers.filter(x => x.role === 'Sales Executive').length > 0
                   ? Math.ceil(unassigned.length / teamMembers.filter(x => x.role === 'Sales Executive').length)
                   : 0} leads
@@ -165,7 +215,7 @@ export default function AssignLeads() {
         </div>
         <div className="flex justify-end gap-2 mt-6">
           <SecondaryButton onClick={() => setModal(null)}>Cancel</SecondaryButton>
-          <PrimaryButton onClick={handleRoundRobin} className="flex items-center gap-1.5">
+          <PrimaryButton onClick={handleRoundRobin}>
             <Shuffle size={14} /> Auto Assign
           </PrimaryButton>
         </div>

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Calendar, Clock, CheckCircle, Bell, Plus, Trash2 } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, Bell, Plus, Trash2, Edit2 } from 'lucide-react';
 import Card from '../components/shared/Card';
 import StatusBadge from '../components/shared/StatusBadge';
 import Modal from '../components/shared/Modal';
-import { Input, Select, PrimaryButton, SecondaryButton } from '../components/shared/FormElements';
+import { Input, Select, PrimaryButton, SecondaryButton, IconButton } from '../components/shared/FormElements';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,12 +18,10 @@ function MiniCalendar({ followUps }) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells = Array(firstDay).fill(null).concat(Array.from({ length: daysInMonth }, (_, i) => i + 1));
   const followUpDays = new Set(
-    followUps
-      .filter(f => {
-        const d = new Date(f.date);
-        return d.getFullYear() === year && d.getMonth() === month;
-      })
-      .map(f => new Date(f.date).getDate())
+    followUps.filter(f => {
+      const d = new Date(f.date);
+      return d.getFullYear() === year && d.getMonth() === month;
+    }).map(f => new Date(f.date).getDate())
   );
 
   return (
@@ -96,16 +94,16 @@ export default function FollowUps() {
         {/* Follow-ups list */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl">
               {['All', 'Pending', 'Done'].map(f => (
                 <button key={f} onClick={() => setFilter(f)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors
-                    ${filter === f ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all
+                    ${filter === f ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                   {f}
                 </button>
               ))}
             </div>
-            <PrimaryButton onClick={openAdd} className="flex items-center gap-1.5">
+            <PrimaryButton onClick={openAdd}>
               <Plus size={14} /> Add Follow-up
             </PrimaryButton>
           </div>
@@ -142,12 +140,8 @@ export default function FollowUps() {
                     </div>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => openEdit(f)} className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-500 transition-colors">
-                      <Clock size={14} />
-                    </button>
-                    <button onClick={() => deleteFollowUp(f.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
-                      <Trash2 size={14} />
-                    </button>
+                    <IconButton onClick={() => openEdit(f)} variant="blue" title="Edit Follow-up"><Edit2 size={14} /></IconButton>
+                    <IconButton onClick={() => deleteFollowUp(f.id)} variant="red" title="Delete Follow-up"><Trash2 size={14} /></IconButton>
                   </div>
                 </div>
               </Card>

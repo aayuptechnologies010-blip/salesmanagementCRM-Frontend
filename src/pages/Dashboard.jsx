@@ -72,7 +72,14 @@ export default function Dashboard() {
             <span className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg font-medium">Last 6 months</span>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={[]}>
+            <LineChart data={[
+              { month: 'Feb', revenue: 85000 },
+              { month: 'Mar', revenue: 120000 },
+              { month: 'Apr', revenue: 95000 },
+              { month: 'May', revenue: 160000 },
+              { month: 'Jun', revenue: 140000 },
+              { month: 'Jul', revenue: 210000 },
+            ]}>
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v / 1000}k`} />
               <Tooltip formatter={v => [`₹${v.toLocaleString()}`, 'Revenue']} contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: 12 }} />

@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Building2, Bell, Shield, Save } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Building2, Bell, Shield, Save, User, Edit2, X, Camera, Phone, Mail, Briefcase } from 'lucide-react';
 import Card from '../components/shared/Card';
-import { Input, Textarea, Select, PrimaryButton, SecondaryButton } from '../components/shared/FormElements';
+import { Input, Select, PrimaryButton, SecondaryButton } from '../components/shared/FormElements';
+import { useAuth } from '../context/AuthContext';
 
 const tabs = [
   { id: 'company', label: 'Company Profile', icon: Building2 },
@@ -14,7 +15,6 @@ const permissions = [
   'View Dashboard', 'Manage Leads', 'Assign Leads', 'Delete Leads',
   'View Reports', 'Manage Team', 'Export Data', 'Manage Settings',
 ];
-
 const defaultPerms = {
   'Super Admin': new Set(permissions),
   'Admin / Sales Manager': new Set(['View Dashboard', 'Manage Leads', 'Assign Leads', 'View Reports', 'Manage Team', 'Export Data']),
@@ -22,11 +22,47 @@ const defaultPerms = {
 };
 
 export default function Settings() {
+  const { currentUser, updateProfile } = useAuth();
   const [tab, setTab] = useState('company');
+  const [editMode, setEditMode] = useState(false);
   const [perms, setPerms] = useState(defaultPerms);
   const [notifs, setNotifs] = useState({
     newLead: true, assignment: true, followup: true, conversion: false, weeklyReport: true,
   });
+
+  const [form, setForm] = useState({
+    name: currentUser?.name || '',
+    phone: currentUser?.phone || '',
+    profileImage: currentUser?.profileImage || null,
+  });
+  const [previewImage, setPreviewImage] = useState(currentUser?.profileImage || null);
+  const fileRef = useRef();
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setPreviewImage(ev.target.result);
+      setForm(f => ({ ...f, profileImage: ev.target.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = () => {
+    updateProfile(form);
+    setEditMode(false);
+  };
+
+  const handleCancel = () => {
+    setForm({
+      name: currentUser?.name || '',
+      phone: currentUser?.phone || '',
+      profileImage: currentUser?.profileImage || null,
+    });
+    setPreviewImage(currentUser?.profileImage || null);
+    setEditMode(false);
+  };
 
   const togglePerm = (role, perm) => {
     setPerms(p => {
@@ -36,12 +72,15 @@ export default function Settings() {
     });
   };
 
+  const displayImage = previewImage || currentUser?.profileImage;
+  const avatarInitials = currentUser?.avatar || 'U';
+
   return (
     <div className="space-y-4">
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit flex-wrap">
         {tabs.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setTab(id)}
+          <button key={id} onClick={() => { setTab(id); setEditMode(false); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all
               ${tab === id ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
             <Icon size={15} />{label}
@@ -49,35 +88,107 @@ export default function Settings() {
         ))}
       </div>
 
-      {/* Company Profile */}
+      {/* Company Profile Tab — includes My Profile section */}
       {tab === 'company' && (
-        <Card className="p-6 max-w-2xl">
-          <h3 className="font-semibold text-gray-800 mb-5">Company Profile</h3>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4 mb-2">
-              <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center text-white text-xl font-bold">LF</div>
+        <div className="space-y-4 max-w-2xl">
+
+          {/* ── My Profile Section ── */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-semibold text-gray-800">My Profile</h3>
+              {!editMode ? (
+                <PrimaryButton onClick={() => setEditMode(true)}>
+                  <Edit2 size={14} /> Edit Profile
+                </PrimaryButton>
+              ) : (
+                <div className="flex gap-2">
+                  <SecondaryButton onClick={handleCancel}>
+                    <X size={14} /> Cancel
+                  </SecondaryButton>
+                  <PrimaryButton onClick={handleSave}>
+                    <Save size={14} /> Save Changes
+                  </PrimaryButton>
+                </div>
+              )}
+            </div>
+
+            {/* Avatar + basic info */}
+            <div className="flex items-center gap-5 mb-5 pb-5 border-b border-gray-100">
+              <div className="relative flex-shrink-0">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-blue-500 flex items-center justify-center shadow-sm">
+                  {displayImage
+                    ? <img src={displayImage} alt="Profile" className="w-full h-full object-cover" />
+                    : <span className="text-white text-2xl font-bold">{avatarInitials}</span>
+                  }
+                </div>
+                {editMode && (
+                  <>
+                    <button onClick={() => fileRef.current.click()}
+                      className="absolute -bottom-1.5 -right-1.5 w-7 h-7 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-md transition-colors">
+                      <Camera size={13} />
+                    </button>
+                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                  </>
+                )}
+              </div>
               <div>
-                <p className="text-sm font-medium text-gray-700">Company Logo</p>
-                <button className="text-xs text-blue-500 hover:text-blue-600 mt-0.5">Upload new logo</button>
+                <p className="text-lg font-bold text-gray-800">{currentUser?.name}</p>
+                <p className="text-sm text-gray-500">{currentUser?.email}</p>
+                <span className="inline-block mt-1.5 text-xs bg-blue-100 text-blue-600 px-2.5 py-0.5 rounded-lg font-semibold">
+                  {currentUser?.role}
+                </span>
+                {editMode && (
+                  <p className="text-xs text-gray-400 mt-1.5">Click the camera icon to change photo</p>
+                )}
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input label="Company Name" placeholder="Enter company name" />
-              <Input label="Website" placeholder="Enter website URL" />
-              <Input label="Email" type="email" placeholder="Enter company email" />
-              <Input label="Phone" placeholder="Enter phone number" />
-            </div>
-            <Textarea label="Address" placeholder="Enter full company address" rows={3} />
-            <Select label="Timezone">
-              <option>Asia/Kolkata (IST)</option>
-              <option>America/New_York (EST)</option>
-              <option>Europe/London (GMT)</option>
-            </Select>
-            <div className="flex justify-end">
-              <PrimaryButton className="flex items-center gap-1.5"><Save size={14} /> Save Changes</PrimaryButton>
-            </div>
-          </div>
-        </Card>
+
+            {/* Fields — edit or read */}
+            {editMode ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input label="Full Name" value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Enter your full name" />
+                  <Input label="Phone Number" value={form.phone}
+                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="+91 XXXXX XXXXX" />
+                </div>
+                <Input label="Email Address" value={currentUser?.email} disabled
+                  className="bg-gray-50 text-gray-400 cursor-not-allowed" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input label="Role" value={currentUser?.role} disabled
+                    className="bg-gray-50 text-gray-400 cursor-not-allowed" />
+                  <Input label="Team" value={currentUser?.team} disabled
+                    className="bg-gray-50 text-gray-400 cursor-not-allowed" />
+                </div>
+                <p className="text-xs text-gray-400">Email, Role and Team can only be changed by Super Admin.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { icon: User, label: 'Full Name', value: currentUser?.name },
+                  { icon: Phone, label: 'Phone Number', value: currentUser?.phone || 'Not set' },
+                  { icon: Mail, label: 'Email Address', value: currentUser?.email },
+                  { icon: Briefcase, label: 'Role', value: currentUser?.role },
+                  { icon: Building2, label: 'Team', value: currentUser?.team },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div className="w-8 h-8 bg-white border border-gray-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Icon size={14} className="text-blue-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-400 font-medium">{label}</p>
+                      <p className="text-sm text-gray-800 font-semibold truncate">{value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+
+        </div>
       )}
 
       {/* Notifications */}
@@ -98,13 +209,13 @@ export default function Settings() {
                   <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
                 </div>
                 <button onClick={() => setNotifs(n => ({ ...n, [key]: !n[key] }))}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${notifs[key] ? 'bg-blue-500' : 'bg-gray-200'}`}>
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifs[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  className={`relative w-11 h-6 rounded-full transition-colors outline-none ${notifs[key] ? 'bg-blue-500' : 'bg-gray-200'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifs[key] ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
             ))}
             <div className="flex justify-end">
-              <PrimaryButton className="flex items-center gap-1.5"><Save size={14} /> Save Preferences</PrimaryButton>
+              <PrimaryButton><Save size={14} /> Save Preferences</PrimaryButton>
             </div>
           </div>
         </Card>
@@ -140,7 +251,7 @@ export default function Settings() {
             </table>
           </div>
           <div className="flex justify-end mt-4">
-            <PrimaryButton className="flex items-center gap-1.5"><Save size={14} /> Save Permissions</PrimaryButton>
+            <PrimaryButton><Save size={14} /> Save Permissions</PrimaryButton>
           </div>
         </Card>
       )}

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Upload, Plus, Trash2, UserCheck } from 'lucide-react';
+import { Search, Filter, Upload, Plus, Trash2, UserCheck, Calendar } from 'lucide-react';
 import Card from '../components/shared/Card';
 import DataTable from '../components/shared/DataTable';
 import StatusBadge from '../components/shared/StatusBadge';
 import Modal from '../components/shared/Modal';
-import { Input, Select, PrimaryButton, SecondaryButton } from '../components/shared/FormElements';
+import { Input, Select, PrimaryButton, SecondaryButton, DangerButton, BadgeButton, Tooltip } from '../components/shared/FormElements';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -58,7 +58,7 @@ export default function Leads() {
     {
       key: 'name', label: 'Name', sortable: true, render: (v, row) => (
         <button onClick={() => navigate(`/leads/${row.id}`)}
-          className="font-medium text-blue-600 hover:text-blue-700 hover:underline text-left">{v}</button>
+          className="font-semibold text-blue-600 hover:text-blue-700 hover:underline text-left">{v}</button>
       )
     },
     { key: 'company', label: 'Company', sortable: true },
@@ -67,10 +67,35 @@ export default function Leads() {
     { key: 'source', label: 'Source' },
     { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
     { key: 'assignedTo', label: 'Assigned To', render: v => v || <span className="text-gray-400 italic text-xs">Unassigned</span> },
-    { key: 'followUpDate', label: 'Follow-up', sortable: true },
+    {
+      key: 'followUpDate',
+      label: 'Follow-up',
+      sortable: true,
+      render: (v, row) => {
+        if (v) {
+          return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+              <Calendar size={12} /> {v}
+            </span>
+          );
+        }
+        return (
+          <Tooltip text="Schedule">
+            <button
+              onClick={() => navigate(`/leads/${row.id}`)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg transition-all border border-dashed border-blue-300 hover:border-blue-600"
+            >
+              + Schedule
+            </button>
+          </Tooltip>
+        );
+      }
+    },
     {
       key: 'id', label: '', render: (_, row) => (
-        <button onClick={() => openEdit(row)} className="text-xs text-blue-500 hover:text-blue-600 font-medium">Edit</button>
+        <Tooltip text="Edit">
+          <BadgeButton onClick={() => openEdit(row)} color="blue">Edit</BadgeButton>
+        </Tooltip>
       )
     },
   ];
@@ -88,27 +113,30 @@ export default function Leads() {
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
             className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
             <option value="">All Status</option>
-            {['New', 'Interested', 'Won', 'Lost'].map(s => <option key={s}>{s}</option>)}
+            {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'].map(s => <option key={s}>{s}</option>)}
           </select>
           {selected.length > 0 && (
             <div className="flex gap-2">
-              <SecondaryButton onClick={() => setModal('assign')} className="flex items-center gap-1.5">
+              <PrimaryButton onClick={() => setModal('assign')}>
                 <UserCheck size={14} /> Assign ({selected.length})
-              </SecondaryButton>
-              <button onClick={() => setModal('delete')}
-                className="flex items-center gap-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-700 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors">
+              </PrimaryButton>
+              <DangerButton onClick={() => setModal('delete')}>
                 <Trash2 size={14} /> Delete
-              </button>
+              </DangerButton>
             </div>
           )}
         </div>
         <div className="flex gap-2">
-          <SecondaryButton className="flex items-center gap-1.5">
-            <Upload size={14} /> Import
-          </SecondaryButton>
-          <PrimaryButton onClick={openAdd} className="flex items-center gap-1.5">
-            <Plus size={14} /> Add Lead
-          </PrimaryButton>
+          <Tooltip text="Import">
+            <SecondaryButton>
+              <Upload size={14} /> Import
+            </SecondaryButton>
+          </Tooltip>
+          <Tooltip text="Add Lead">
+            <PrimaryButton onClick={openAdd}>
+              <Plus size={14} /> Add Lead
+            </PrimaryButton>
+          </Tooltip>
         </div>
       </div>
 
@@ -132,10 +160,10 @@ export default function Leads() {
           <Input label="Email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Enter email address" />
           <Select label="Source" value={form.source} onChange={e => setForm({ ...form, source: e.target.value })}>
             <option value="">Select source</option>
-            {['Website', 'Referral', 'LinkedIn', 'Cold Call', 'Email Campaign'].map(s => <option key={s}>{s}</option>)}
+            {['Website', 'Referral', 'LinkedIn', 'Cold Call', 'Email Campaign', 'Conference'].map(s => <option key={s}>{s}</option>)}
           </Select>
           <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-            {['New', 'Interested', 'Won', 'Lost'].map(s => <option key={s}>{s}</option>)}
+            {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'].map(s => <option key={s}>{s}</option>)}
           </Select>
           <Select label="Assign To" value={form.assignedTo} onChange={e => setForm({ ...form, assignedTo: e.target.value })}>
             <option value="">Select member</option>
@@ -154,7 +182,7 @@ export default function Leads() {
         <p className="text-sm text-gray-600">Are you sure you want to delete <strong>{selected.length}</strong> selected lead(s)? This cannot be undone.</p>
         <div className="flex justify-end gap-2 mt-6">
           <SecondaryButton onClick={() => setModal(null)}>Cancel</SecondaryButton>
-          <button onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-4 py-2.5 text-sm font-medium transition-colors">Delete</button>
+          <DangerButton onClick={handleDelete}><Trash2 size={14} /> Delete</DangerButton>
         </div>
       </Modal>
 
@@ -167,7 +195,7 @@ export default function Leads() {
         </Select>
         <div className="flex justify-end gap-2 mt-6">
           <SecondaryButton onClick={() => setModal(null)}>Cancel</SecondaryButton>
-          <PrimaryButton onClick={handleAssign}>Assign</PrimaryButton>
+          <PrimaryButton onClick={handleAssign}><UserCheck size={14} /> Assign</PrimaryButton>
         </div>
       </Modal>
     </div>

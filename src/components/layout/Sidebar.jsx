@@ -1,44 +1,63 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, UserCheck, CalendarClock, BarChart3, Settings, X, UsersRound } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Users, UserCheck, CalendarClock, BarChart3, Settings, X, UsersRound, Kanban, CalendarDays, IndianRupee } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/leads', icon: Users, label: 'Leads' },
+  { to: '/pipeline', icon: Kanban, label: 'Pipeline' },
   { to: '/assign', icon: UserCheck, label: 'Assign Leads' },
   { to: '/followups', icon: CalendarClock, label: 'Follow-ups' },
+  { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
+  { to: '/invoices', icon: IndianRupee, label: 'Invoices' },
   { to: '/team', icon: UsersRound, label: 'Team Members' },
   { to: '/reports', icon: BarChart3, label: 'Reports' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
-function AnimatedSubtitle() {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    const initial = setTimeout(() => setShow(true), 2000);
-    const interval = setInterval(() => setShow(s => !s), 2000);
-    return () => { clearTimeout(initial); clearInterval(interval); };
-  }, []);
-
-  return (
-    <div className="h-5 overflow-hidden">
-      <span
-        className={`block text-xs font-bold tracking-[0.2em] uppercase transition-all duration-500
-          ${show ? 'text-blue-500 translate-y-0 opacity-100' : 'text-transparent translate-y-2 opacity-0'}`}
-      >
-        SALES CRM
-      </span>
-    </div>
-  );
-}
 
 export default function Sidebar({ open, onClose }) {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const hasImage = !!currentUser?.profileImage;
 
   return (
     <>
+      <style>{`
+        @keyframes cube-rotate {
+          0%, 20% { transform: rotateX(0deg); }
+          25%, 45% { transform: rotateX(90deg); }
+          50%, 70% { transform: rotateX(180deg); }
+          75%, 95% { transform: rotateX(270deg); }
+          100% { transform: rotateX(360deg); }
+        }
+        .logo-cube-container {
+          perspective: 1000px;
+          width: 150px;
+          height: 40px;
+        }
+        .logo-cube {
+          width: 100%;
+          height: 100%;
+          position: relative;
+          transform-style: preserve-3d;
+          animation: cube-rotate 8s infinite cubic-bezier(0.645, 0.045, 0.355, 1);
+        }
+        .logo-cube-face {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          background: white;
+          backface-visibility: hidden;
+        }
+        .logo-cube-front  { transform: rotateX(0deg) translateZ(20px); }
+        .logo-cube-bottom { transform: rotateX(-90deg) translateZ(20px); }
+        .logo-cube-back   { transform: rotateX(-180deg) translateZ(20px); }
+        .logo-cube-top    { transform: rotateX(-270deg) translateZ(20px); }
+      `}</style>
       {/* Mobile overlay */}
       {open && <div className="fixed inset-0 bg-black/30 z-30 lg:hidden" onClick={onClose} />}
 
@@ -48,12 +67,26 @@ export default function Sidebar({ open, onClose }) {
         {/* Logo */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <img
-              src="/logo.png"
-              alt="Logo"
-              className="ml-4 w-[150px] rounded-xl object-contain"
-            />
-            <AnimatedSubtitle />
+            <div className="logo-cube-container ml-2">
+              <div className="logo-cube">
+                <div className="logo-cube-face logo-cube-front">
+                  <img src="/logo.png" alt="Logo" className="w-full h-full object-contain rounded-xl" />
+                </div>
+                <div className="logo-cube-face logo-cube-bottom">
+                  <span className="font-extrabold text-lg tracking-widest uppercase bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 bg-clip-text text-transparent w-full text-center">
+                    SALES CRM
+                  </span>
+                </div>
+                <div className="logo-cube-face logo-cube-back">
+                  <img src="/logo.png" alt="Logo" className="w-full h-full object-contain rounded-xl" />
+                </div>
+                <div className="logo-cube-face logo-cube-top">
+                  <span className="font-extrabold text-lg tracking-widest uppercase bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 bg-clip-text text-transparent w-full text-center">
+                    SALES CRM
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
           <button onClick={onClose} className="lg:hidden p-1 rounded-lg hover:bg-gray-100">
             <X size={18} className="text-gray-500" />
@@ -80,15 +113,21 @@ export default function Sidebar({ open, onClose }) {
 
         {/* User footer */}
         <div className="px-4 py-4 border-t border-gray-200">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-              {currentUser?.avatar || 'SA'}
+          <button
+            onClick={() => { navigate('/settings'); onClose?.(); }}
+            className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors group">
+            <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-blue-500">
+              {hasImage
+                ? <img src={currentUser.profileImage} alt={currentUser.name} className="w-full h-full object-cover" />
+                : <span className="text-white text-xs font-bold">{currentUser?.avatar || 'SA'}</span>
+              }
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate">{currentUser?.name || 'Super Admin'}</p>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-600 transition-colors">{currentUser?.name || 'Super Admin'}</p>
               <p className="text-xs text-gray-400 truncate">{currentUser?.email || ''}</p>
             </div>
-          </div>
+            <Settings size={14} className="text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0" />
+          </button>
         </div>
       </aside>
     </>

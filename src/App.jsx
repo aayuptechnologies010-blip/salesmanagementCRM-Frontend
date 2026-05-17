@@ -12,6 +12,10 @@ import FollowUps from './pages/FollowUps';
 import Team from './pages/Team';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Pipeline from './pages/Pipeline';
+import Calendar from './pages/Calendar';
+import Invoices from './pages/Invoices';
+import InvoiceDetail from './pages/InvoiceDetail';
 
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth();
@@ -39,6 +43,10 @@ export default function App() {
           <Route path="/assign" element={<AssignLeads />} />
           <Route path="/followups" element={<FollowUps />} />
           <Route path="/team" element={<Team />} />
+          <Route path="/pipeline" element={<Pipeline />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/invoices" element={<Invoices />} />
+          <Route path="/invoices/:id" element={<InvoiceDetail />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
