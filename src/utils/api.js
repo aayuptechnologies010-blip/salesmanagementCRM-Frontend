@@ -1,4 +1,26 @@
-const BASE_URL = 'http://localhost:5000/api';
+const getBaseUrl = () => {
+  // Check if a custom VITE_API_URL is supplied via Vite environment
+  if (import.meta.env && import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  const hostname = window.location.hostname;
+  
+  // If hosted on Render (e.g. salesmanagementcrm-frontend.onrender.com)
+  if (hostname.includes('salesmanagementcrm-frontend.onrender.com')) {
+    return 'https://salesmanagementcrm-backend.onrender.com/api';
+  }
+  
+  // Dynamic replacement for custom Render/Vercel environments with '-frontend'
+  if (hostname.includes('-frontend.')) {
+    return `https://${hostname.replace('-frontend.', '-backend.')}/api`;
+  }
+  
+  // Default fallback for development
+  return 'http://localhost:5000/api';
+};
+
+const BASE_URL = getBaseUrl();
 
 const getHeaders = () => {
   const headers = {
