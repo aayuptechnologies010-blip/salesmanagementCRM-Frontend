@@ -23,7 +23,7 @@ export default function LeadDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { leads, updateLead, addFollowUp } = useData();
-  const { teamMembers } = useAuth();
+  const { teamMembers, currentUser } = useAuth();
 
   const lead = leads.find(l => l.id === Number(id));
 
@@ -49,7 +49,7 @@ export default function LeadDetails() {
 
   const handleStatusChange = (s) => {
     setStatus(s);
-    updateLead(lead.id, { ...lead, status: s });
+    updateLead(lead.id, { ...lead, status: s }, currentUser?.name);
   };
 
   const addNote = () => {
@@ -71,8 +71,8 @@ export default function LeadDetails() {
     addFollowUp({
       lead: lead.name, company: lead.company, date: fuDate, time: fuTime,
       assignedTo: fuAssign || lead.assignedTo || '', priority: 'Medium', status: 'Pending',
-    });
-    updateLead(lead.id, { ...lead, followUpDate: fuDate });
+    }, currentUser?.name);
+    updateLead(lead.id, { ...lead, followUpDate: fuDate }, currentUser?.name);
     setScheduled(true);
     setTimeout(() => setScheduled(false), 2500);
   };

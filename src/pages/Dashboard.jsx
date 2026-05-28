@@ -8,8 +8,13 @@ import { useAuth } from '../context/AuthContext';
 const COLORS = ['#E5E7EB', '#DBEAFE', '#3B82F6', '#93C5FD'];
 
 export default function Dashboard() {
-  const { leads, followUps, activities } = useData();
-  const { teamMembers } = useAuth();
+  const { getLeadsForUser, getFollowUpsForUser, getActivitiesForUser } = useData();
+  const { teamMembers, currentUser } = useAuth();
+
+  const leads = getLeadsForUser(currentUser);
+  const followUps = getFollowUpsForUser(currentUser);
+  const activities = getActivitiesForUser(currentUser);
+  const isSalesExec = currentUser?.role === 'Sales Executive';
 
   const today = new Date().toISOString().slice(0, 10);
   const totalLeads = leads.length;
@@ -19,11 +24,11 @@ export default function Dashboard() {
   const conversionRate = totalLeads > 0 ? `${Math.round((converted / totalLeads) * 100)}%` : '0%';
 
   const kpis = [
-    { label: 'Total Leads', value: totalLeads, icon: Users, change: '+12%', color: 'bg-blue-50 text-blue-500' },
-    { label: 'New Today', value: newToday, icon: UserPlus, change: '+3', color: 'bg-gray-100 text-gray-500' },
-    { label: 'Assigned', value: assigned, icon: UserCheck, change: '+8%', color: 'bg-blue-50 text-blue-500' },
-    { label: 'Converted', value: converted, icon: Target, change: '+5%', color: 'bg-blue-100 text-blue-600' },
-    { label: 'Conversion Rate', value: conversionRate, icon: TrendingUp, change: '+2.1%', color: 'bg-blue-50 text-blue-500' },
+    { label: 'Total Leads', value: totalLeads, icon: Users, change: '', color: 'bg-blue-50 text-blue-500' },
+    { label: 'New Today', value: newToday, icon: UserPlus, change: '', color: 'bg-gray-100 text-gray-500' },
+    ...(!isSalesExec ? [{ label: 'Assigned', value: assigned, icon: UserCheck, change: '', color: 'bg-blue-50 text-blue-500' }] : []),
+    { label: 'Converted', value: converted, icon: Target, change: '', color: 'bg-blue-100 text-blue-600' },
+    { label: 'Conversion Rate', value: conversionRate, icon: TrendingUp, change: '', color: 'bg-blue-50 text-blue-500' },
   ];
 
   const leadStatusChart = [
@@ -72,14 +77,7 @@ export default function Dashboard() {
             <span className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg font-medium">Last 6 months</span>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={[
-              { month: 'Feb', revenue: 85000 },
-              { month: 'Mar', revenue: 120000 },
-              { month: 'Apr', revenue: 95000 },
-              { month: 'May', revenue: 160000 },
-              { month: 'Jun', revenue: 140000 },
-              { month: 'Jul', revenue: 210000 },
-            ]}>
+            <LineChart data={[]}>
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v / 1000}k`} />
               <Tooltip formatter={v => [`₹${v.toLocaleString()}`, 'Revenue']} contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: 12 }} />
@@ -112,23 +110,25 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Team Performance + Follow-ups */}
+      {/* Team Performance + Follow-ups — Team chart hidden for Sales Exec */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2 p-5">
-          <div className="mb-4">
-            <h3 className="font-semibold text-gray-800">Team Performance</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Leads vs Conversions</p>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={teamChart} barGap={4}>
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: 12 }} />
-              <Bar dataKey="leads" fill="#DBEAFE" radius={[6, 6, 0, 0]} name="Leads" />
-              <Bar dataKey="converted" fill="#3B82F6" radius={[6, 6, 0, 0]} name="Converted" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
+        {!isSalesExec && (
+          <Card className="lg:col-span-2 p-5">
+            <div className="mb-4">
+              <h3 className="font-semibold text-gray-800">Team Performance</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Leads vs Conversions</p>
+            </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={teamChart} barGap={4}>
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: 12 }} />
+                <Bar dataKey="leads" fill="#DBEAFE" radius={[6, 6, 0, 0]} name="Leads" />
+                <Bar dataKey="converted" fill="#3B82F6" radius={[6, 6, 0, 0]} name="Converted" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        )}
 
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">

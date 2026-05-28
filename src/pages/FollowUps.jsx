@@ -56,8 +56,10 @@ function MiniCalendar({ followUps }) {
 const emptyForm = { lead: '', company: '', date: '', time: '', assignedTo: '', priority: 'Medium', status: 'Pending' };
 
 export default function FollowUps() {
-  const { followUps, addFollowUp, updateFollowUp, deleteFollowUp } = useData();
-  const { teamMembers } = useAuth();
+  const { getFollowUpsForUser, addFollowUp, updateFollowUp, deleteFollowUp } = useData();
+  const { teamMembers, currentUser } = useAuth();
+  const followUps = getFollowUpsForUser(currentUser);
+  const isSalesExec = currentUser?.role === 'Sales Executive';
   const [filter, setFilter] = useState('All');
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -103,7 +105,7 @@ export default function FollowUps() {
                 </button>
               ))}
             </div>
-            <PrimaryButton onClick={openAdd}>
+            <PrimaryButton onClick={openAdd} className="flex items-center gap-1.5">
               <Plus size={14} /> Add Follow-up
             </PrimaryButton>
           </div>

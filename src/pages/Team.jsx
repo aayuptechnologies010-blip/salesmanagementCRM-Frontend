@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit2, Trash2, KeyRound, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, KeyRound, Search, Mail, MessageCircle } from 'lucide-react';
 import Card from '../components/shared/Card';
 import DataTable from '../components/shared/DataTable';
 import StatusBadge from '../components/shared/StatusBadge';
@@ -70,7 +70,23 @@ export default function Team() {
     { key: 'converted', label: 'Converted', sortable: true },
     { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
     {
-      key: 'id', label: '', render: (_, row) => (
+      key: 'contact', label: 'Contact', render: (_, row) => (
+        <div className="flex gap-1.5">
+          <a href={`mailto:${row.email}`} title={`Email ${row.name}`}
+            className="w-8 h-8 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center border border-blue-200 transition-all">
+            <Mail size={14} />
+          </a>
+          <a href={row.phone ? `https://wa.me/${row.phone.replace(/\D/g, '')}` : `tel:${row.phone || ''}`} 
+            title={row.phone ? `WhatsApp ${row.name}` : `No phone number set`}
+            className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all ${row.phone ? 'bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border-[#25D366]/30' : 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'}`}
+            onClick={e => !row.phone && e.preventDefault()}>
+            <MessageCircle size={14} />
+          </a>
+        </div>
+      )
+    },
+    {
+      key: 'id', label: 'Actions', render: (_, row) => (
         <div className="flex gap-1">
           <IconButton onClick={() => openEdit(row)} variant="blue" title="Edit Member"><Edit2 size={14} /></IconButton>
           <IconButton onClick={() => handleDelete(row.id)} variant="red" title="Remove Member"><Trash2 size={14} /></IconButton>

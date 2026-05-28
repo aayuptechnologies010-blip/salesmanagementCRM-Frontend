@@ -1,8 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Zap, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { Input, PrimaryButton } from '../../components/shared/FormElements';
 import { useAuth } from '../../context/AuthContext';
+
+// Clear all old dummy localStorage data on first visit
+const OLD_KEYS = ['crm_leads', 'crm_followups', 'crm_activities', 'crm_seeded', 'crm_migrated_v2', 'crm_migrated_v3'];
+if (!localStorage.getItem('crm_cleaned_v1')) {
+  OLD_KEYS.forEach(k => localStorage.removeItem(k));
+  localStorage.setItem('crm_cleaned_v1', '1');
+}
 
 export default function Login() {
   const [show, setShow] = useState(false);
@@ -24,14 +31,63 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <style>{`
+        @keyframes cube-rotate {
+          0%, 20% { transform: rotateX(0deg); }
+          25%, 45% { transform: rotateX(90deg); }
+          50%, 70% { transform: rotateX(180deg); }
+          75%, 95% { transform: rotateX(270deg); }
+          100% { transform: rotateX(360deg); }
+        }
+        .login-cube-container {
+          perspective: 1000px;
+          width: 180px;
+          height: 60px;
+        }
+        .login-cube {
+          width: 100%;
+          height: 100%;
+          position: relative;
+          transform-style: preserve-3d;
+          animation: cube-rotate 8s infinite cubic-bezier(0.645, 0.045, 0.355, 1);
+        }
+        .login-cube-face {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          backface-visibility: hidden;
+        }
+        .login-cube-front  { transform: rotateX(0deg) translateZ(30px); }
+        .login-cube-bottom { transform: rotateX(-90deg) translateZ(30px); }
+        .login-cube-back   { transform: rotateX(-180deg) translateZ(30px); }
+        .login-cube-top    { transform: rotateX(-270deg) translateZ(30px); }
+      `}</style>
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-            <Zap size={20} className="text-white" />
+        {/* Logo cube */}
+        <div className="flex items-center justify-center mb-8">
+          <div className="login-cube-container">
+            <div className="login-cube">
+              <div className="login-cube-face login-cube-front">
+                <img src="/logo.png" alt="Logo" className="h-full w-full object-contain" />
+              </div>
+              <div className="login-cube-face login-cube-bottom">
+                <span className="font-extrabold text-2xl tracking-widest uppercase bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                  SALES CRM
+                </span>
+              </div>
+              <div className="login-cube-face login-cube-back">
+                <img src="/logo.png" alt="Logo" className="h-full w-full object-contain" />
+              </div>
+              <div className="login-cube-face login-cube-top">
+                <span className="font-extrabold text-2xl tracking-widest uppercase bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                  SALES CRM
+                </span>
+              </div>
+            </div>
           </div>
-          <span className="text-2xl font-bold text-gray-800">LeadFlow</span>
-          <span className="text-sm bg-blue-100 text-blue-600 px-2 py-0.5 rounded-lg font-medium">CRM</span>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
@@ -86,14 +142,6 @@ export default function Login() {
 
             <PrimaryButton type="submit" className="w-full justify-center">Sign In</PrimaryButton>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <p className="text-xs text-gray-400 text-center mb-2">Super Admin credentials</p>
-            <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1">
-              <p className="text-xs text-gray-500">📧 <span className="font-medium text-gray-700">aayup@gmail.com</span></p>
-              <p className="text-xs text-gray-500">🔒 <span className="font-medium text-gray-700">aayup2025</span></p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

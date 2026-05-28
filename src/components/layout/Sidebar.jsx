@@ -1,18 +1,15 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, UserCheck, CalendarClock, BarChart3, Settings, X, UsersRound, Kanban, CalendarDays, IndianRupee } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, CalendarClock, BarChart3, Settings, X, UsersRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/leads', icon: Users, label: 'Leads' },
-  { to: '/pipeline', icon: Kanban, label: 'Pipeline' },
-  { to: '/assign', icon: UserCheck, label: 'Assign Leads' },
-  { to: '/followups', icon: CalendarClock, label: 'Follow-ups' },
-  { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
-  { to: '/invoices', icon: IndianRupee, label: 'Invoices' },
-  { to: '/team', icon: UsersRound, label: 'Team Members' },
-  { to: '/reports', icon: BarChart3, label: 'Reports' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+const allNavItems = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['Super Admin', 'Admin', 'Sales Executive'] },
+  { to: '/leads', icon: Users, label: 'Leads', roles: ['Super Admin', 'Admin', 'Sales Executive'] },
+  { to: '/assign', icon: UserCheck, label: 'Assign Leads', roles: ['Super Admin', 'Admin'] },
+  { to: '/followups', icon: CalendarClock, label: 'Follow-ups', roles: ['Super Admin', 'Admin', 'Sales Executive'] },
+  { to: '/team', icon: UsersRound, label: 'Team Members', roles: ['Super Admin', 'Admin'] },
+  { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['Super Admin', 'Admin'] },
+  { to: '/settings', icon: Settings, label: 'Settings', roles: ['Super Admin', 'Admin', 'Sales Executive'] },
 ];
 
 
@@ -20,6 +17,8 @@ export default function Sidebar({ open, onClose }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const hasImage = !!currentUser?.profileImage;
+
+  const navItems = allNavItems.filter(item => item.roles.includes(currentUser?.role || 'Sales Executive'));
 
   return (
     <>
