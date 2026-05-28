@@ -1,69 +1,132 @@
-import { createContext, useContext } from 'react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../utils/api';
 
 const AuthContext = createContext(null);
 
-const SUPER_ADMIN = {
-  id: 1,
-  name: 'Super Admin',
-  email: 'aayup@gmail.com',
-  password: 'aayup2025',
-  role: 'Super Admin',
-  team: '-',
-  avatar: 'SA',
-  status: 'Active',
-  leads: 0,
-  converted: 0,
-};
-
 export function AuthProvider({ children }) {
-  const [users, setUsers] = useLocalStorage('crm_users', [SUPER_ADMIN]);
-  const [currentUser, setCurrentUser] = useLocalStorage('crm_session', null);
-
-  const login = (email, password) => {
-    const user = users.find(
-      u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (user) {
-      setCurrentUser(user);
-      return { success: true, user };
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('crm_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
     }
-    return { success: false };
+  });
+  const [allUsers, setAllUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Verify token on mount and fetch users if authenticated
+  useEffect(() => {
+    const verifyUser = async () => {
+      const token = localStorage.getItem('crm_token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const user = await api.get('/auth/me');
+        setCurrentUser(user);
+        localStorage.setItem('crm_session', JSON.stringify(user));
+        
+        // Fetch all users if admin/super admin
+        if (user.role === 'Super Admin' || user.role === 'Admin') {
+          const usersList = await api.get('/users');
+          setAllUsers(usersList);
+        } else {
+          const teamList = await api.get('/users/team');
+          setAllUsers(teamList);
+        }
+      } catch (err) {
+        console.error('Session verification failed:', err.message);
+        logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    verifyUser();
+  }, []);
+
+  const login = async (email, password) => {
+    try {
+      const data = await api.post('/auth/login', { email, password });
+      localStorage.setItem('crm_token', data.token);
+      localStorage.setItem('crm_session', JSON.stringify(data.user));
+      setCurrentUser(data.user);
+      
+      // Load users
+      if (data.user.role === 'Super Admin' || data.user.role === 'Admin') {
+        const usersList = await api.get('/users');
+        setAllUsers(usersList);
+      } else {
+        const teamList = await api.get('/users/team');
+        setAllUsers(teamList);
+      }
+      return { success: true, user: data.user };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
   };
 
-  const logout = () => setCurrentUser(null);
+  const logout = () => {
+    localStorage.removeItem('crm_token');
+    localStorage.removeItem('crm_session');
+    setCurrentUser(null);
+    setAllUsers([]);
+  };
 
-  const addUser = (userData) => {
-    const initials = userData.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    const newUser = { ...userData, id: Date.now(), avatar: initials, leads: 0, converted: 0 };
-    setUsers(prev => [...prev, newUser]);
+  const addUser = async (userData) => {
+    const newUser = await api.post('/users', userData);
+    setAllUsers(prev => [...prev, newUser]);
     return newUser;
   };
 
-  const updateUser = (id, userData) => {
-    const initials = userData.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...userData, avatar: initials } : u));
-    if (currentUser?.id === id) setCurrentUser(prev => ({ ...prev, ...userData, avatar: initials }));
+  const updateUser = async (id, userData) => {
+    const updatedUser = await api.patch(`/users/${id}`, userData);
+    setAllUsers(prev => prev.map(u => u._id === id ? updatedUser : u));
+    if (currentUser?._id === id || currentUser?.id === id) {
+      setCurrentUser(updatedUser);
+      localStorage.setItem('crm_session', JSON.stringify(updatedUser));
+    }
+    return updatedUser;
   };
 
-  const updateProfile = (profileData) => {
-    const initials = profileData.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    const updated = { ...currentUser, ...profileData, avatar: initials };
-    setUsers(prev => prev.map(u => u.id === currentUser.id ? updated : u));
+  const deleteUser = async (id) => {
+    await api.delete(`/users/${id}`);
+    setAllUsers(prev => prev.filter(u => u._id !== id && u.id !== id));
+  };
+
+  const updateProfile = async (profileData) => {
+    const updated = await api.patch('/auth/profile', profileData);
     setCurrentUser(updated);
+    localStorage.setItem('crm_session', JSON.stringify(updated));
+    setAllUsers(prev => prev.map(u => u._id === updated._id ? updated : u));
+    return updated;
   };
 
-  const deleteUser = (id) => setUsers(prev => prev.filter(u => u.id !== id));
+  const teamMembers = allUsers.filter(u => u.role !== 'Super Admin');
 
-  const teamMembers = users.filter(u => u.role !== 'Super Admin');
+  // Helper to map old mock id or backend id
+  const getMappedUser = (user) => {
+    if (!user) return null;
+    return {
+      ...user,
+      id: user._id || user.id
+    };
+  };
+
+  const mappedCurrentUser = getMappedUser(currentUser);
+  const mappedAllUsers = allUsers.map(getMappedUser);
+  const mappedTeamMembers = teamMembers.map(getMappedUser);
 
   return (
     <AuthContext.Provider value={{
-      currentUser, login, logout,
+      currentUser: mappedCurrentUser, login, logout,
       addUser, updateUser, updateProfile, deleteUser,
-      teamMembers, allUsers: users,
+      teamMembers: mappedTeamMembers, allUsers: mappedAllUsers,
+      loading
     }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

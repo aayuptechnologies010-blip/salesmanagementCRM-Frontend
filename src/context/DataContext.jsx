@@ -1,81 +1,150 @@
-import { createContext, useContext } from 'react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../utils/api';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
-  const [leads, setLeads] = useLocalStorage('crm_leads', []);
-  const [followUps, setFollowUps] = useLocalStorage('crm_followups', []);
-  const [activities, setActivities] = useLocalStorage('crm_activities', []);
+  const { currentUser } = useAuth();
+  const [leads, setLeads] = useState([]);
+  const [followUps, setFollowUps] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch all data from backend when user is authenticated
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!currentUser) {
+        setLeads([]);
+        setFollowUps([]);
+        setActivities([]);
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        
+        // Fetch dashboard statistics or list APIs
+        const [leadsData, followUpsData, activitiesData] = await Promise.all([
+          api.get('/leads'),
+          api.get('/followups'),
+          api.get('/activities'),
+        ]);
+
+        setLeads(leadsData.leads || []);
+        setFollowUps(followUpsData || []);
+        setActivities(activitiesData || []);
+      } catch (err) {
+        console.error('Failed to fetch data from backend:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [currentUser]);
+
+  // Helper to map DB _id to frontend id
+  const getMappedItem = (item) => {
+    if (!item) return null;
+    return {
+      ...item,
+      id: item._id || item.id
+    };
+  };
+
+  const mappedLeads = leads.map(getMappedItem);
+  const mappedFollowUps = followUps.map(getMappedItem);
+  const mappedActivities = activities.map(getMappedItem);
 
   // ── Leads ──
-  const addLead = (data, userName = 'Admin') => {
-    const newLead = { ...data, id: Date.now(), createdAt: new Date().toISOString().slice(0, 10) };
-    setLeads(prev => [...prev, newLead]);
-    _addActivity(`New lead added: ${data.name}`, data.name, 'add', userName);
-    return newLead;
+  const addLead = async (data, userName = 'Admin') => {
+    const newLead = await api.post('/leads', data);
+    setLeads(prev => [newLead, ...prev]);
+    
+    // Refresh activities
+    const activitiesData = await api.get('/activities');
+    setActivities(activitiesData);
+    
+    return getMappedItem(newLead);
   };
 
-  const updateLead = (id, data, userName = 'Admin') => {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...data } : l));
-    _addActivity(`Lead updated: ${data.name}`, data.name, 'edit', userName);
+  const updateLead = async (id, data, userName = 'Admin') => {
+    const updatedLead = await api.patch(`/leads/${id}`, data);
+    setLeads(prev => prev.map(l => (l._id === id || l.id === id) ? updatedLead : l));
+    
+    // Refresh activities
+    const activitiesData = await api.get('/activities');
+    setActivities(activitiesData);
+
+    return getMappedItem(updatedLead);
   };
 
-  const deleteLead = (ids) => {
-    setLeads(prev => prev.filter(l => !ids.includes(l.id)));
+  const deleteLead = async (ids) => {
+    await api.delete('/leads', { ids });
+    setLeads(prev => prev.filter(l => !ids.includes(l._id) && !ids.includes(l.id)));
   };
 
-  const assignLead = (ids, assignTo, userName = 'Admin') => {
-    setLeads(prev => prev.map(l => ids.includes(l.id) ? { ...l, assignedTo: assignTo } : l));
-    _addActivity(`${ids.length} lead(s) assigned to ${assignTo}`, assignTo, 'assign', userName);
+  const assignLead = async (ids, assignTo, userName = 'Admin') => {
+    await api.patch('/leads/assign/bulk', { ids, assignedTo: assignTo });
+    setLeads(prev => prev.map(l => (ids.includes(l._id) || ids.includes(l.id)) ? { ...l, assignedTo: assignTo } : l));
+    
+    // Refresh activities
+    const activitiesData = await api.get('/activities');
+    setActivities(activitiesData);
   };
 
   // ── Follow-ups ──
-  const addFollowUp = (data, userName = 'Admin') => {
-    const newFU = { ...data, id: Date.now() };
-    setFollowUps(prev => [...prev, newFU]);
-    _addActivity(`Follow-up scheduled for ${data.lead}`, data.lead, 'followup', userName);
+  const addFollowUp = async (data, userName = 'Admin') => {
+    const newFU = await api.post('/followups', data);
+    setFollowUps(prev => [newFU, ...prev]);
+    
+    // Refresh activities
+    const activitiesData = await api.get('/activities');
+    setActivities(activitiesData);
+
+    return getMappedItem(newFU);
   };
 
-  const updateFollowUp = (id, data) => {
-    setFollowUps(prev => prev.map(f => f.id === id ? { ...f, ...data } : f));
+  const updateFollowUp = async (id, data) => {
+    const updatedFU = await api.patch(`/followups/${id}`, data);
+    setFollowUps(prev => prev.map(f => (f._id === id || f.id === id) ? updatedFU : f));
+    return getMappedItem(updatedFU);
   };
 
-  const deleteFollowUp = (id) => {
-    setFollowUps(prev => prev.filter(f => f.id !== id));
-  };
-
-  // ── Activities ──
-  const _addActivity = (action, lead, type, user = 'Admin') => {
-    const entry = { id: Date.now(), user, action, lead, time: new Date().toLocaleTimeString(), type };
-    setActivities(prev => [entry, ...prev].slice(0, 100));
+  const deleteFollowUp = async (id) => {
+    await api.delete(`/followups/${id}`);
+    setFollowUps(prev => prev.filter(f => f._id !== id && f.id !== id));
   };
 
   // ── Role-filtered getters ──
-  const getLeadsForUser = (currentUser) => {
-    if (!currentUser) return [];
-    if (currentUser.role === 'Super Admin' || currentUser.role === 'Admin') return leads;
-    return leads.filter(l => l.assignedTo === currentUser.name);
+  const getLeadsForUser = (user) => {
+    if (!user) return [];
+    if (user.role === 'Super Admin' || user.role === 'Admin') return mappedLeads;
+    return mappedLeads.filter(l => l.assignedTo === user.name);
   };
 
-  const getFollowUpsForUser = (currentUser) => {
-    if (!currentUser) return [];
-    if (currentUser.role === 'Super Admin' || currentUser.role === 'Admin') return followUps;
-    return followUps.filter(f => f.assignedTo === currentUser.name);
+  const getFollowUpsForUser = (user) => {
+    if (!user) return [];
+    if (user.role === 'Super Admin' || user.role === 'Admin') return mappedFollowUps;
+    return mappedFollowUps.filter(f => f.assignedTo === user.name);
   };
 
-  const getActivitiesForUser = (currentUser) => {
-    if (!currentUser) return [];
-    if (currentUser.role === 'Super Admin' || currentUser.role === 'Admin') return activities;
-    return activities.filter(a => a.user === currentUser.name);
+  const getActivitiesForUser = (user) => {
+    if (!user) return [];
+    if (user.role === 'Super Admin' || user.role === 'Admin') return mappedActivities;
+    return mappedActivities.filter(a => a.user === user.name);
   };
 
   return (
     <DataContext.Provider value={{
-      leads, followUps, activities,
+      leads: mappedLeads, 
+      followUps: mappedFollowUps, 
+      activities: mappedActivities,
       getLeadsForUser, getFollowUpsForUser, getActivitiesForUser,
       addLead, updateLead, deleteLead, assignLead,
       addFollowUp, updateFollowUp, deleteFollowUp,
+      loading
     }}>
       {children}
     </DataContext.Provider>
