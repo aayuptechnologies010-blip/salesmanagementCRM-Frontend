@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Upload, Plus, Trash2, UserCheck, Calendar } from 'lucide-react';
+import { Search, Filter, Upload, Plus, Trash2, UserCheck, Calendar, Phone } from 'lucide-react';
 import Card from '../components/shared/Card';
 import DataTable from '../components/shared/DataTable';
 import StatusBadge from '../components/shared/StatusBadge';
@@ -8,6 +8,7 @@ import Modal from '../components/shared/Modal';
 import { Input, Select, PrimaryButton, SecondaryButton } from '../components/shared/FormElements';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import CallPanel from '../components/shared/CallPanel';
 
 const emptyForm = { name: '', company: '', phone: '', email: '', source: '', status: 'New', assignedTo: '', followUpDate: '' };
 
@@ -26,6 +27,7 @@ export default function Leads() {
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [assignTo, setAssignTo] = useState('');
+  const [callingLead, setCallingLead] = useState(null);
 
   const filtered = leads.filter(l =>
     (l.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -65,7 +67,14 @@ export default function Leads() {
       )
     },
     { key: 'company', label: 'Company', sortable: true },
-    { key: 'phone', label: 'Phone' },
+    {
+      key: 'phone', label: 'Phone', render: (v, row) => (
+        <button onClick={() => setCallingLead(row)}
+          className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 hover:underline font-medium">
+          <Phone size={13} className="text-blue-500" /> {v}
+        </button>
+      )
+    },
     { key: 'email', label: 'Email', render: v => <span className="text-gray-500">{v}</span> },
     { key: 'source', label: 'Source' },
     { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
@@ -193,6 +202,10 @@ export default function Leads() {
           <PrimaryButton onClick={handleAssign} className="flex items-center gap-1.5"><UserCheck size={14} /> Assign</PrimaryButton>
         </div>
       </Modal>
+
+      {callingLead && (
+        <CallPanel lead={callingLead} onClose={() => setCallingLead(null)} />
+      )}
     </div>
   );
 }

@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, Building2, Globe, Calendar, Edit2, Plus, CheckCircle, Clock, MessageCircle, DollarSign, User, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, Building2, Globe, Calendar, Edit2, Plus, CheckCircle, Clock, MessageCircle, DollarSign, User, Tag, Trash2, Play, Headphones } from 'lucide-react';
 import Card from '../components/shared/Card';
 import StatusBadge from '../components/shared/StatusBadge';
 import { Input, Select, PrimaryButton, SecondaryButton, GhostButton, IconButton } from '../components/shared/FormElements';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../utils/api';
+import CallPanel from '../components/shared/CallPanel';
 
 const statusOptions = ['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'];
 
@@ -36,6 +38,32 @@ export default function LeadDetails() {
   const [fuTime, setFuTime] = useState('10:00');
   const [fuAssign, setFuAssign] = useState('');
   const [scheduled, setScheduled] = useState(false);
+  const [callingLead, setCallingLead] = useState(null);
+  const [recordings, setRecordings] = useState([]);
+
+  useEffect(() => {
+    const fetchRecordings = async () => {
+      try {
+        const data = await api.get(`/recordings/${id}`);
+        setRecordings(data);
+      } catch (err) {
+        console.error('Failed to fetch recordings:', err);
+      }
+    };
+    if (id) {
+      fetchRecordings();
+    }
+  }, [id]);
+
+  const getAudioUrl = (urlPath) => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5009/api';
+    const host = baseUrl.replace('/api', '');
+    return `${host}${urlPath}`;
+  };
+
+  const formatDuration = (s) => {
+    return `${Math.floor(s / 60)}m ${s % 60}s`;
+  };
 
   if (!lead) return (
     <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -122,6 +150,10 @@ export default function LeadDetails() {
               <p className="text-sm font-semibold text-gray-700">{lead.source || '—'}</p>
             </div>
             <div className="flex gap-2">
+              <button onClick={() => setCallingLead(lead)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 rounded-xl text-sm font-semibold transition-all">
+                <Phone size={15} /> Call
+              </button>
               <a href={`https://wa.me/${lead.phone?.replace(/\D/g, '')}?text=Hi ${lead.name.split(' ')[0]},`}
                 target="_blank" rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 border border-[#25D366]/30 rounded-xl text-sm font-semibold transition-all">
@@ -147,21 +179,27 @@ export default function LeadDetails() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Contact Details</h3>
             <div className="space-y-3">
               {[
-                { icon: Phone,     label: 'Phone',     value: lead.phone },
+                { icon: Phone,     label: 'Phone',     value: lead.phone, onClick: () => setCallingLead(lead) },
                 { icon: Mail,      label: 'Email',     value: lead.email },
                 { icon: Building2, label: 'Company',   value: lead.company },
                 { icon: DollarSign,label: 'Deal Value',value: lead.value ? `₹${lead.value}` : '—' },
                 { icon: Globe,     label: 'Source',    value: lead.source },
                 { icon: User,      label: 'Assigned',  value: lead.assignedTo || 'Unassigned' },
                 { icon: Calendar,  label: 'Follow-up', value: lead.followUpDate || '—' },
-              ].map(({ icon: Icon, label, value }) => (
+              ].map(({ icon: Icon, label, value, onClick }) => (
                 <div key={label} className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
                     <Icon size={13} className="text-gray-400" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-400">{label}</p>
-                    <p className="text-sm text-gray-800 font-medium truncate">{value}</p>
+                    {onClick ? (
+                      <button onClick={onClick} className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium text-left truncate block w-full">
+                        {value}
+                      </button>
+                    ) : (
+                      <p className="text-sm text-gray-800 font-medium truncate">{value}</p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -240,6 +278,51 @@ export default function LeadDetails() {
             </div>
           </Card>
 
+          {/* Call History & Recordings */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                <Headphones size={16} className="text-blue-500" /> Call History & Recordings
+              </h3>
+              <span className="text-xs text-gray-400">{recordings.length} Call{recordings.length !== 1 ? 's' : ''}</span>
+            </div>
+            
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {recordings.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  <Phone size={24} className="mx-auto mb-2 opacity-40 animate-pulse text-gray-300" />
+                  <p className="text-sm">No call recordings yet. Start a call to record.</p>
+                </div>
+              )}
+              {recordings.map((rec) => (
+                <div key={rec._id || rec.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                        <Phone size={12} className="text-green-500" /> Outbound Call
+                      </p>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                        {formatDuration(rec.duration)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1.5">
+                      Called by <strong className="text-gray-700 font-semibold">{rec.calledBy?.name || 'User'}</strong> on {new Date(rec.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  
+                  {/* Sleek Native audio player wrapper */}
+                  <div className="flex-shrink-0 w-full sm:w-auto">
+                    <audio
+                      src={getAudioUrl(rec.url)}
+                      controls
+                      className="h-8 w-full sm:w-48 outline-none"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
           {/* Activity Timeline */}
           <Card className="p-5">
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-5">Activity Timeline</h3>
@@ -282,6 +365,16 @@ export default function LeadDetails() {
           </Card>
         </div>
       </div>
+
+      {callingLead && (
+        <CallPanel
+          lead={callingLead}
+          onClose={() => setCallingLead(null)}
+          onRecordingSaved={(newRec) => {
+            setRecordings(prev => [newRec, ...prev]);
+          }}
+        />
+      )}
     </div>
   );
 }
