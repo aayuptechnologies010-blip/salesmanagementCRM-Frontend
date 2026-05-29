@@ -27,29 +27,49 @@ export default function AssignLeads() {
   const [selected, setSelected] = useState([]);
   const [modal, setModal] = useState(null);
   const [assignTo, setAssignTo] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
+  const [memberSearch, setMemberSearch] = useState('');
 
   // Filter states
   const [search, setSearch] = useState('');
   const [filterAssignment, setFilterAssignment] = useState('All');
   const [filterSource, setFilterSource] = useState('');
+  const [filterLeadType, setFilterLeadType] = useState('');
 
   const unassigned = leads.filter(l => !l.assignedTo);
+  const filteredMembers = teamMembers.filter(m =>
+    m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+    (m.role && m.role.toLowerCase().includes(memberSearch.toLowerCase()))
+  );
 
   const filteredLeads = leads.filter(l => {
-    const matchesSearch = l.name.toLowerCase().includes(search.toLowerCase()) || 
-                          l.company.toLowerCase().includes(search.toLowerCase());
+    const s = search.toLowerCase();
+    const matchesSearch = 
+      l.name.toLowerCase().includes(s) || 
+      (l.company && l.company.toLowerCase().includes(s)) ||
+      (l.phone && l.phone.toLowerCase().includes(s)) ||
+      (l.email && l.email.toLowerCase().includes(s)) ||
+      (l.leadType && l.leadType.toLowerCase().includes(s)) ||
+      (l.course && l.course.toLowerCase().includes(s)) ||
+      (l.college && l.college.toLowerCase().includes(s)) ||
+      (l.projectType && l.projectType.toLowerCase().includes(s)) ||
+      (l.techStack && l.techStack.toLowerCase().includes(s));
+
     const matchesAssignment = filterAssignment === 'All' ? true 
                             : filterAssignment === 'Assigned' ? !!l.assignedTo 
                             : !l.assignedTo;
     const matchesSource = filterSource ? l.source === filterSource : true;
-    return matchesSearch && matchesAssignment && matchesSource;
+    const matchesLeadType = filterLeadType ? l.leadType === filterLeadType : true;
+    return matchesSearch && matchesAssignment && matchesSource && matchesLeadType;
   });
 
   const handleBulkAssign = () => {
     if (!assignTo) return;
-    assignLead(selected, assignTo);
+    assignLead(selected, assignTo, followUpDate);
     setSelected([]);
     setAssignTo('');
+    setFollowUpDate('');
+    setMemberSearch('');
     setModal(null);
   };
 
@@ -70,6 +90,13 @@ export default function AssignLeads() {
   const columns = [
     { key: 'name', label: 'Lead Name', sortable: true },
     { key: 'company', label: 'Company' },
+    {
+      key: 'leadType', label: 'Type', render: v => (
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${v === 'Student Training' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+          {v || 'Client Project'}
+        </span>
+      )
+    },
     { key: 'source', label: 'Source' },
     { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
     {
@@ -150,6 +177,15 @@ export default function AssignLeads() {
               <option value="Unassigned">Unassigned Only</option>
             </select>
             <select 
+              value={filterLeadType} 
+              onChange={e => setFilterLeadType(e.target.value)}
+              className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+            >
+              <option value="">All Lead Types</option>
+              <option value="Client Project">Client Project</option>
+              <option value="Student Training">Student Training</option>
+            </select>
+            <select 
               value={filterSource} 
               onChange={e => setFilterSource(e.target.value)}
               className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none"
@@ -192,14 +228,57 @@ export default function AssignLeads() {
       </Card>
 
       {/* Single / Bulk Assign Modal */}
-      <Modal isOpen={modal === 'single' || modal === 'bulk'} onClose={() => setModal(null)}
+      <Modal isOpen={modal === 'single' || modal === 'bulk'} onClose={() => { setModal(null); setMemberSearch(''); }}
         title={modal === 'bulk' ? `Bulk Assign (${selected.length} leads)` : 'Assign Lead'} size="sm">
-        <Select label="Assign To" value={assignTo} onChange={e => setAssignTo(e.target.value)}>
-          <option value="">Select sales executive</option>
-          {teamMembers.map(m => <option key={m.id}>{m.name}</option>)}
-        </Select>
+        <div className="space-y-4">
+          <div className="flex flex-col">
+            <label className="text-xs font-semibold text-gray-500 mb-1.5">Assign To (Search Team Member)</label>
+            <input 
+              type="text" 
+              value={memberSearch}
+              onChange={e => setMemberSearch(e.target.value)}
+              placeholder="Search member by name or role..."
+              className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none bg-white mb-2 transition-all" 
+            />
+            <div className="border border-gray-200 rounded-2xl max-h-40 overflow-y-auto p-1.5 space-y-1 bg-gray-50/50">
+              {filteredMembers.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-4">No team members found</p>
+              )}
+              {filteredMembers.map(m => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setAssignTo(m.name)}
+                  className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all text-xs border
+                    ${assignTo === m.name ? 'bg-blue-50 border-blue-200 text-blue-700 font-semibold shadow-sm' : 'hover:bg-white border-transparent text-gray-700'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center font-bold text-[10px] text-blue-600 flex-shrink-0">
+                      {m.avatar || m.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800">{m.name}</p>
+                      <p className="text-[10px] text-gray-400 font-normal">{m.role}</p>
+                    </div>
+                  </div>
+                  {assignTo === m.name && <span className="text-blue-500 font-bold">✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-xs font-semibold text-gray-500 mb-1.5">Follow-up Date</label>
+            <input 
+              type="date" 
+              value={followUpDate} 
+              onChange={e => setFollowUpDate(e.target.value)}
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none bg-white transition-all" 
+            />
+          </div>
+        </div>
         <div className="flex justify-end gap-2 mt-6">
-          <SecondaryButton onClick={() => setModal(null)}>Cancel</SecondaryButton>
+          <SecondaryButton onClick={() => { setModal(null); setMemberSearch(''); }}>Cancel</SecondaryButton>
           <PrimaryButton onClick={handleBulkAssign}><UserCheck size={14} /> Assign</PrimaryButton>
         </div>
       </Modal>

@@ -10,7 +10,26 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import CallPanel from '../components/shared/CallPanel';
 
-const emptyForm = { name: '', company: '', phone: '', email: '', source: '', status: 'New', assignedTo: '', followUpDate: '' };
+const emptyForm = { 
+  name: '', 
+  company: '', 
+  phone: '', 
+  email: '', 
+  source: '', 
+  status: 'New', 
+  leadType: 'Client Project', 
+  assignedTo: '', 
+  followUpDate: '',
+  course: '', 
+  branch: '', 
+  college: '', 
+  year: '', 
+  trainingType: '',
+  projectType: '', 
+  techStack: '', 
+  timeline: '',
+  value: ''
+};
 
 export default function Leads() {
   const navigate = useNavigate();
@@ -22,6 +41,7 @@ export default function Leads() {
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterLeadType, setFilterLeadType] = useState('');
   const [selected, setSelected] = useState([]);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -32,7 +52,8 @@ export default function Leads() {
   const filtered = leads.filter(l =>
     (l.name.toLowerCase().includes(search.toLowerCase()) ||
       l.company.toLowerCase().includes(search.toLowerCase())) &&
-    (filterStatus ? l.status === filterStatus : true)
+    (filterStatus ? l.status === filterStatus : true) &&
+    (filterLeadType ? l.leadType === filterLeadType : true)
   );
 
   const openAdd = () => { setForm(emptyForm); setEditId(null); setModal('form'); };
@@ -53,7 +74,7 @@ export default function Leads() {
 
   const handleAssign = () => {
     if (!assignTo) return;
-    assignLead(selected, assignTo, currentUser?.name);
+    assignLead(selected, assignTo, '', currentUser?.name);
     setSelected([]);
     setAssignTo('');
     setModal(null);
@@ -67,6 +88,13 @@ export default function Leads() {
       )
     },
     { key: 'company', label: 'Company', sortable: true },
+    {
+      key: 'leadType', label: 'Type', render: v => (
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${v === 'Student Training' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+          {v || 'Client Project'}
+        </span>
+      )
+    },
     {
       key: 'phone', label: 'Phone', render: (v, row) => (
         <button onClick={() => setCallingLead(row)}
@@ -107,6 +135,11 @@ export default function Leads() {
             className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
             <option value="">All Status</option>
             {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost', 'No Response'].map(s => <option key={s}>{s}</option>)}
+          </select>
+          <select value={filterLeadType} onChange={e => setFilterLeadType(e.target.value)}
+            className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
+            <option value="">All Lead Types</option>
+            {['Client Project', 'Student Training'].map(t => <option key={t}>{t}</option>)}
           </select>
           {/* Bulk actions — only for admin roles */}
           {selected.length > 0 && !isSalesExec && (
@@ -157,9 +190,12 @@ export default function Leads() {
       <Modal isOpen={modal === 'form'} onClose={() => setModal(null)} title={editId ? 'Edit Lead' : 'Add New Lead'} size="lg">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="Full Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Enter full name" />
-          <Input label="Company" value={form.company} onChange={e => setForm({ ...form, company: e.target.value })} placeholder="Enter company name" />
           <Input label="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Enter phone number" />
           <Input label="Email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Enter email address" />
+          <Select label="Lead Type" value={form.leadType || 'Client Project'} onChange={e => setForm({ ...form, leadType: e.target.value })}>
+            <option value="Client Project">Client Project</option>
+            <option value="Student Training">Student Training</option>
+          </Select>
           <Select label="Source" value={form.source} onChange={e => setForm({ ...form, source: e.target.value })}>
             <option value="">Select source</option>
             {['Website', 'Referral', 'LinkedIn', 'Cold Call', 'Email Campaign', 'Conference'].map(s => <option key={s}>{s}</option>)}
@@ -167,13 +203,40 @@ export default function Leads() {
           <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
             {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost', 'No Response'].map(s => <option key={s}>{s}</option>)}
           </Select>
-          {!isSalesExec && (
-            <Select label="Assign To" value={form.assignedTo} onChange={e => setForm({ ...form, assignedTo: e.target.value })}>
-              <option value="">Select member</option>
-              {teamMembers.map(m => <option key={m.id}>{m.name}</option>)}
-            </Select>
+
+          {/* Student Training Specific Fields */}
+          {form.leadType === 'Student Training' && (
+            <>
+              <Input label="Course Name" value={form.course || ''} onChange={e => setForm({ ...form, course: e.target.value })} placeholder="e.g. Full Stack Web Development" />
+              <Input label="Branch" value={form.branch || ''} onChange={e => setForm({ ...form, branch: e.target.value })} placeholder="e.g. CSE / IT / ECE" />
+              <Input label="College Name" value={form.college || ''} onChange={e => setForm({ ...form, college: e.target.value })} placeholder="Enter college name" />
+              <Select label="Year of Study" value={form.year || ''} onChange={e => setForm({ ...form, year: e.target.value })}>
+                <option value="">Select Year</option>
+                {['1st Year', '2nd Year', '3rd Year', '4th Year', 'Passed Out'].map(y => <option key={y}>{y}</option>)}
+              </Select>
+              <Select label="Training Mode" value={form.trainingType || ''} onChange={e => setForm({ ...form, trainingType: e.target.value })}>
+                <option value="">Select Mode</option>
+                {['Online', 'Offline'].map(m => <option key={m}>{m}</option>)}
+              </Select>
+            </>
           )}
-          <Input label="Follow-up Date" type="date" value={form.followUpDate} onChange={e => setForm({ ...form, followUpDate: e.target.value })} />
+
+          {/* Client Project Specific Fields */}
+          {(form.leadType === 'Client Project' || !form.leadType) && (
+            <>
+              <Input label="Company Name" value={form.company || ''} onChange={e => setForm({ ...form, company: e.target.value })} placeholder="Enter company name" />
+              <Select label="Project Type" value={form.projectType || ''} onChange={e => setForm({ ...form, projectType: e.target.value })}>
+                <option value="">Select Project Type</option>
+                {['Web Application', 'Mobile Application', 'E-Commerce Website', 'UI/UX Design', 'Custom ERP/CRM Software', 'Other'].map(pt => <option key={pt}>{pt}</option>)}
+              </Select>
+              <Input label="Preferred Tech Stack" value={form.techStack || ''} onChange={e => setForm({ ...form, techStack: e.target.value })} placeholder="e.g. MERN Stack, Python, PHP" />
+              <Select label="Expected Timeline" value={form.timeline || ''} onChange={e => setForm({ ...form, timeline: e.target.value })}>
+                <option value="">Select Timeline</option>
+                {['< 1 Month', '1 - 3 Months', '3 - 6 Months', '6+ Months'].map(t => <option key={t}>{t}</option>)}
+              </Select>
+              <Input label="Deal Value (₹)" value={form.value || ''} onChange={e => setForm({ ...form, value: e.target.value })} placeholder="Enter project budget" />
+            </>
+          )}
         </div>
         <div className="flex justify-end gap-2 mt-6">
           <SecondaryButton onClick={() => setModal(null)}>Cancel</SecondaryButton>

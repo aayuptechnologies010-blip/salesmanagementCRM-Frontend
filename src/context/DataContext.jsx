@@ -85,13 +85,24 @@ export function DataProvider({ children }) {
     setLeads(prev => prev.filter(l => !ids.includes(l._id) && !ids.includes(l.id)));
   };
 
-  const assignLead = async (ids, assignTo, userName = 'Admin') => {
-    await api.patch('/leads/assign/bulk', { ids, assignedTo: assignTo });
-    setLeads(prev => prev.map(l => (ids.includes(l._id) || ids.includes(l.id)) ? { ...l, assignedTo: assignTo } : l));
+  const assignLead = async (ids, assignTo, followUpDate = '', userName = 'Admin') => {
+    await api.patch('/leads/assign/bulk', { ids, assignedTo: assignTo, followUpDate });
+    setLeads(prev => prev.map(l => {
+      if (ids.includes(l._id) || ids.includes(l.id)) {
+        const updated = { ...l, assignedTo: assignTo };
+        if (followUpDate) updated.followUpDate = followUpDate;
+        return updated;
+      }
+      return l;
+    }));
     
-    // Refresh activities
-    const activitiesData = await api.get('/activities');
+    // Refresh activities & followups
+    const [activitiesData, followUpsData] = await Promise.all([
+      api.get('/activities'),
+      api.get('/followups')
+    ]);
     setActivities(activitiesData);
+    setFollowUps(followUpsData || []);
   };
 
   // ── Follow-ups ──

@@ -181,8 +181,10 @@ export default function LeadDetails() {
               {[
                 { icon: Phone,     label: 'Phone',     value: lead.phone, onClick: () => setCallingLead(lead) },
                 { icon: Mail,      label: 'Email',     value: lead.email },
-                { icon: Building2, label: 'Company',   value: lead.company },
-                { icon: DollarSign,label: 'Deal Value',value: lead.value ? `₹${lead.value}` : '—' },
+                ...(lead.leadType !== 'Student Training' ? [
+                  { icon: Building2, label: 'Company',   value: lead.company },
+                  { icon: DollarSign,label: 'Deal Value',value: lead.value ? `₹${lead.value}` : '—' },
+                ] : []),
                 { icon: Globe,     label: 'Source',    value: lead.source },
                 { icon: User,      label: 'Assigned',  value: lead.assignedTo || 'Unassigned' },
                 { icon: Calendar,  label: 'Follow-up', value: lead.followUpDate || '—' },
@@ -205,6 +207,44 @@ export default function LeadDetails() {
               ))}
             </div>
           </Card>
+
+          {/* Dynamic Lead Type Details */}
+          {lead.leadType === 'Student Training' ? (
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Training Information</h3>
+              <div className="space-y-3">
+                {[
+                  { label: 'Course', value: lead.course || '—' },
+                  { label: 'Branch', value: lead.branch || '—' },
+                  { label: 'College', value: lead.college || '—' },
+                  { label: 'Year', value: lead.year || '—' },
+                  { label: 'Mode', value: lead.trainingType || '—' },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between items-center py-1.5 border-b border-gray-50 last:border-b-0">
+                    <span className="text-xs text-gray-400 font-medium">{label}</span>
+                    <span className="text-sm text-gray-800 font-semibold truncate max-w-[140px] text-right">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <Card className="p-5">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Project Requirements</h3>
+              <div className="space-y-3">
+                {[
+                  { label: 'Project Type', value: lead.projectType || '—' },
+                  { label: 'Tech Stack', value: lead.techStack || '—' },
+                  { label: 'Timeline', value: lead.timeline || '—' },
+                  { label: 'Deal Value', value: lead.value ? `₹${lead.value}` : '—' },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex justify-between items-center py-1.5 border-b border-gray-50 last:border-b-0">
+                    <span className="text-xs text-gray-400 font-medium">{label}</span>
+                    <span className="text-sm text-gray-800 font-semibold truncate max-w-[140px] text-right">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* Update Status */}
           <Card className="p-5">
