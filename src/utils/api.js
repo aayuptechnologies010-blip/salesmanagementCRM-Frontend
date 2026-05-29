@@ -17,7 +17,7 @@ const getBaseUrl = () => {
   }
   
   // Default fallback for development
-  return 'http://localhost:5000/api';
+  return 'http://localhost:5009/api';
 };
 
 const BASE_URL = getBaseUrl();

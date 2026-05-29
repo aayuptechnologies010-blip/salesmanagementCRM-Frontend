@@ -18,14 +18,14 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = login(form.email, form.password);
+    const result = await login(form.email, form.password);
     if (result.success) {
       setError('');
       navigate('/dashboard');
     } else {
-      setError('Invalid email or password. Please try again.');
+      setError(result.message || 'Invalid email or password. Please try again.');
     }
   };
 
