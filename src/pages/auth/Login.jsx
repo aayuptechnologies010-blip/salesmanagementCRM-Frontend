@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Download, Smartphone } from 'lucide-react';
 import { Input, PrimaryButton } from '../../components/shared/FormElements';
 import { useAuth } from '../../context/AuthContext';
+import Modal from '../../components/shared/Modal';
 
 // Clear all old dummy localStorage data on first visit
 const OLD_KEYS = ['crm_leads', 'crm_followups', 'crm_activities', 'crm_seeded', 'crm_migrated_v2', 'crm_migrated_v3'];
@@ -17,6 +18,46 @@ export default function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // PWA installation states
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
+
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const showInstallBtn = isInstallable || (isMobile && !isStandalone);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // If already running as installed app, hide button
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      setIsInstallable(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User install choice: ${outcome}`);
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+    } else {
+      setShowIosGuide(true);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -142,8 +183,53 @@ export default function Login() {
 
             <PrimaryButton type="submit" className="w-full justify-center">Sign In</PrimaryButton>
           </form>
+
+          {/* PWA Download Button */}
+          {showInstallBtn && (
+            <div className="mt-6 pt-5 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl px-4 py-3 text-sm font-semibold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 duration-150 cursor-pointer"
+              >
+                <Download size={16} /> Download CRM App
+              </button>
+              <p className="text-center text-[11px] text-gray-400 mt-2">
+                Install as a mobile app for offline access and faster loading.
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* iOS Installation Guide Modal */}
+      <Modal isOpen={showIosGuide} onClose={() => setShowIosGuide(false)} title="Install CRM Web App" size="sm">
+        <div className="space-y-4 py-2">
+          <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl p-3.5 text-blue-700">
+            <Smartphone className="flex-shrink-0" size={20} />
+            <p className="text-sm font-medium text-left">Follow these simple steps to install the app on your iPhone/Safari:</p>
+          </div>
+          <ol className="space-y-3.5 text-sm text-gray-600 pl-2 text-left">
+            <li className="flex items-start gap-2.5">
+              <span className="flex items-center justify-center bg-blue-100 text-blue-600 font-bold rounded-full w-5 h-5 text-xs mt-0.5 flex-shrink-0">1</span>
+              <span>Safari browser में नीचे की तरफ <strong>Share 📤</strong> (Square with arrow) बटन पर टैप करें।</span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="flex items-center justify-center bg-blue-100 text-blue-600 font-bold rounded-full w-5 h-5 text-xs mt-0.5 flex-shrink-0">2</span>
+              <span>मेनू में नीचे की तरफ स्क्रॉल करें और <strong>"Add to Home Screen"</strong> विकल्प पर क्लिक करें।</span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="flex items-center justify-center bg-blue-100 text-blue-600 font-bold rounded-full w-5 h-5 text-xs mt-0.5 flex-shrink-0">3</span>
+              <span>ऊपर दाईं ओर <strong>"Add"</strong> पर टैप करें।</span>
+            </li>
+          </ol>
+          <div className="pt-2">
+            <button onClick={() => setShowIosGuide(false)} className="w-full justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 px-4 rounded-xl text-sm transition-colors cursor-pointer">
+              Okay, Got it!
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
