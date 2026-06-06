@@ -35,6 +35,13 @@ export default function CallPanel({ lead, onClose, onSaved }) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
+      // Trigger the phone's native dialer
+      if (lead.phone) {
+        // Remove spaces/special characters from the phone number
+        const cleanPhone = lead.phone.replace(/[^0-9+]/g, '');
+        window.location.href = `tel:${cleanPhone}`;
+      }
+
       const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
       const recorder = new MediaRecorder(stream, { mimeType: mime });
       recorderRef.current = recorder;
@@ -45,11 +52,13 @@ export default function CallPanel({ lead, onClose, onSaved }) {
 
       setPhase('active');
       timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000);
-    } catch {
+    } catch (err) {
       setError('Microphone permission denied. Please allow mic access.');
       setPhase('idle');
     }
   };
+
+
 
   const endCall = () => {
     clearInterval(timerRef.current);
