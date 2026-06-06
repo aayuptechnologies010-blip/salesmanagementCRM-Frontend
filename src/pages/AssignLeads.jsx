@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Shuffle, UserCheck, Users, Search } from 'lucide-react';
+import { Shuffle, UserCheck, Users, Search, Phone } from 'lucide-react';
 import Card from '../components/shared/Card';
 import DataTable from '../components/shared/DataTable';
 import StatusBadge from '../components/shared/StatusBadge';
 import Modal from '../components/shared/Modal';
+import CallPanel from '../components/shared/CallPanel';
 import { Select, PrimaryButton, SecondaryButton, BadgeButton } from '../components/shared/FormElements';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +30,7 @@ export default function AssignLeads() {
   const [assignTo, setAssignTo] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
+  const [callLead, setCallLead] = useState(null); // lead being called
 
   // Filter states
   const [search, setSearch] = useState('');
@@ -105,13 +107,24 @@ export default function AssignLeads() {
         : <span className="text-gray-400 italic text-xs">Unassigned</span>
     },
     {
-      key: 'id', label: 'Action', render: (_, row) => (
-        <BadgeButton
-          color={row.assignedTo ? 'gray' : 'blue'}
-          onClick={() => { setSelected([row.id]); setAssignTo(''); setModal('single'); }}
-        >
-          {row.assignedTo ? 'Reassign' : 'Assign'}
-        </BadgeButton>
+      key: 'id', label: 'Actions', render: (_, row) => (
+        <div className="flex items-center gap-1.5">
+          <BadgeButton
+            color={row.assignedTo ? 'gray' : 'blue'}
+            onClick={() => { setSelected([row.id]); setAssignTo(''); setModal('single'); }}
+          >
+            {row.assignedTo ? 'Reassign' : 'Assign'}
+          </BadgeButton>
+          {row.phone && (
+            <button
+              onClick={() => setCallLead(row)}
+              title={`Call ${row.phone}`}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 text-xs font-semibold transition-all"
+            >
+              <Phone size={11} /> Call
+            </button>
+          )}
+        </div>
       )
     },
   ];
@@ -282,6 +295,15 @@ export default function AssignLeads() {
           <PrimaryButton onClick={handleBulkAssign}><UserCheck size={14} /> Assign</PrimaryButton>
         </div>
       </Modal>
+
+      {/* Call Panel */}
+      {callLead && (
+        <CallPanel
+          lead={callLead}
+          onClose={() => setCallLead(null)}
+          onSaved={() => setCallLead(null)}
+        />
+      )}
 
       {/* Round Robin Modal */}
       <Modal isOpen={modal === 'roundrobin'} onClose={() => setModal(null)} title="Round-Robin Auto Assignment" size="sm">

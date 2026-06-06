@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, Building2, Globe, Calendar, Edit2, Plus, CheckCircle, Clock, MessageCircle, DollarSign, User, Tag, Trash2, Play, Headphones } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, Building2, Globe, Calendar, Edit2, Plus, CheckCircle, Clock, MessageCircle, DollarSign, User, Tag, Trash2, Headphones } from 'lucide-react';
 import Card from '../components/shared/Card';
 import StatusBadge from '../components/shared/StatusBadge';
 import { Input, Select, PrimaryButton, SecondaryButton, GhostButton, IconButton } from '../components/shared/FormElements';
@@ -21,49 +21,38 @@ const statusConfig = {
   Lost:        { color: 'bg-gray-400',   light: 'bg-gray-100 text-gray-600 border-gray-200' },
 };
 
+const fmtDuration = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
+
+const getAudioUrl = (urlPath) => {
+  const base = import.meta.env?.VITE_API_URL || 'http://localhost:5009/api';
+  return `${base.replace('/api', '')}${urlPath}`;
+};
+
 export default function LeadDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { leads, updateLead, addFollowUp } = useData();
   const { teamMembers, currentUser } = useAuth();
 
-  const lead = leads.find(l => l.id === Number(id));
+  // id from URL can be _id (mongo string) or numeric id
+  const lead = leads.find(l => String(l._id || l.id) === String(id) || String(l.id) === String(id));
 
-  const [status, setStatus] = useState(lead?.status || 'New');
-  const [note, setNote] = useState('');
-  const [notes, setNotes] = useState(() => {
+  const [status, setStatus]     = useState(lead?.status || 'New');
+  const [note, setNote]         = useState('');
+  const [notes, setNotes]       = useState(() => {
     try { return JSON.parse(localStorage.getItem(`crm_notes_${id}`)) || []; } catch { return []; }
   });
-  const [fuDate, setFuDate] = useState(lead?.followUpDate || '');
-  const [fuTime, setFuTime] = useState('10:00');
+  const [fuDate, setFuDate]     = useState(lead?.followUpDate || '');
+  const [fuTime, setFuTime]     = useState('10:00');
   const [fuAssign, setFuAssign] = useState('');
   const [scheduled, setScheduled] = useState(false);
   const [callingLead, setCallingLead] = useState(null);
-  const [recordings, setRecordings] = useState([]);
+  const [recordings, setRecordings]   = useState([]);
 
   useEffect(() => {
-    const fetchRecordings = async () => {
-      try {
-        const data = await api.get(`/recordings/${id}`);
-        setRecordings(data);
-      } catch (err) {
-        console.error('Failed to fetch recordings:', err);
-      }
-    };
-    if (id) {
-      fetchRecordings();
-    }
+    if (!id) return;
+    api.get(`/recordings/${id}`).then(setRecordings).catch(() => {});
   }, [id]);
-
-  const getAudioUrl = (urlPath) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5009/api';
-    const host = baseUrl.replace('/api', '');
-    return `${host}${urlPath}`;
-  };
-
-  const formatDuration = (s) => {
-    return `${Math.floor(s / 60)}m ${s % 60}s`;
-  };
 
   if (!lead) return (
     <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -118,14 +107,12 @@ export default function LeadDetails() {
 
       {/* ── Hero Header ── */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        {/* color bar */}
         <div className={`h-1.5 w-full ${cfg.color}`} />
         <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
           <GhostButton onClick={() => navigate('/leads')} className="!px-2 self-start sm:self-auto">
             <ArrowLeft size={18} />
           </GhostButton>
 
-          {/* Avatar + name */}
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0 ${cfg.color}`}>
               {lead.name.charAt(0)}
@@ -139,7 +126,6 @@ export default function LeadDetails() {
             </div>
           </div>
 
-          {/* Quick stats */}
           <div className="flex items-center gap-4 flex-shrink-0">
             <div className="text-center hidden sm:block">
               <p className="text-xs text-gray-400 font-medium">Deal Value</p>
@@ -149,11 +135,13 @@ export default function LeadDetails() {
               <p className="text-xs text-gray-400 font-medium">Source</p>
               <p className="text-sm font-semibold text-gray-700">{lead.source || '—'}</p>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => setCallingLead(lead)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 rounded-xl text-sm font-semibold transition-all">
-                <Phone size={15} /> Call
-              </button>
+            <div className="flex gap-2 flex-wrap">
+              {lead.phone && (
+                <button onClick={() => setCallingLead(lead)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 rounded-xl text-sm font-semibold transition-all">
+                  <Phone size={15} /> Call
+                </button>
+              )}
               <a href={`https://wa.me/${lead.phone?.replace(/\D/g, '')}?text=Hi ${lead.name.split(' ')[0]},`}
                 target="_blank" rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 border border-[#25D366]/30 rounded-xl text-sm font-semibold transition-all">
@@ -179,24 +167,23 @@ export default function LeadDetails() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Contact Details</h3>
             <div className="space-y-3">
               {[
-                { icon: Phone,     label: 'Phone',     value: lead.phone, onClick: () => setCallingLead(lead) },
-                { icon: Mail,      label: 'Email',     value: lead.email },
-                ...(lead.leadType !== 'Student Training' ? [
-                  { icon: Building2, label: 'Company',   value: lead.company },
-                  { icon: DollarSign,label: 'Deal Value',value: lead.value ? `₹${lead.value}` : '—' },
-                ] : []),
-                { icon: Globe,     label: 'Source',    value: lead.source },
-                { icon: User,      label: 'Assigned',  value: lead.assignedTo || 'Unassigned' },
-                { icon: Calendar,  label: 'Follow-up', value: lead.followUpDate || '—' },
-              ].map(({ icon: Icon, label, value, onClick }) => (
+                { icon: Phone,      label: 'Phone',      value: lead.phone,                       clickable: !!lead.phone },
+                { icon: Mail,       label: 'Email',      value: lead.email },
+                { icon: Building2,  label: 'Company',    value: lead.company },
+                { icon: DollarSign, label: 'Deal Value', value: lead.value ? `₹${lead.value}` : '—' },
+                { icon: Globe,      label: 'Source',     value: lead.source },
+                { icon: User,       label: 'Assigned',   value: lead.assignedTo || 'Unassigned' },
+                { icon: Calendar,   label: 'Follow-up',  value: lead.followUpDate || '—' },
+              ].map(({ icon: Icon, label, value, clickable }) => (
                 <div key={label} className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
                     <Icon size={13} className="text-gray-400" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-400">{label}</p>
-                    {onClick ? (
-                      <button onClick={onClick} className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium text-left truncate block w-full">
+                    {clickable ? (
+                      <button onClick={() => setCallingLead(lead)}
+                        className="text-sm text-green-600 hover:text-green-700 hover:underline font-medium text-left truncate block w-full">
                         {value}
                       </button>
                     ) : (
@@ -207,44 +194,6 @@ export default function LeadDetails() {
               ))}
             </div>
           </Card>
-
-          {/* Dynamic Lead Type Details */}
-          {lead.leadType === 'Student Training' ? (
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Training Information</h3>
-              <div className="space-y-3">
-                {[
-                  { label: 'Course', value: lead.course || '—' },
-                  { label: 'Branch', value: lead.branch || '—' },
-                  { label: 'College', value: lead.college || '—' },
-                  { label: 'Year', value: lead.year || '—' },
-                  { label: 'Mode', value: lead.trainingType || '—' },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex justify-between items-center py-1.5 border-b border-gray-50 last:border-b-0">
-                    <span className="text-xs text-gray-400 font-medium">{label}</span>
-                    <span className="text-sm text-gray-800 font-semibold truncate max-w-[140px] text-right">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ) : (
-            <Card className="p-5">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Project Requirements</h3>
-              <div className="space-y-3">
-                {[
-                  { label: 'Project Type', value: lead.projectType || '—' },
-                  { label: 'Tech Stack', value: lead.techStack || '—' },
-                  { label: 'Timeline', value: lead.timeline || '—' },
-                  { label: 'Deal Value', value: lead.value ? `₹${lead.value}` : '—' },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex justify-between items-center py-1.5 border-b border-gray-50 last:border-b-0">
-                    <span className="text-xs text-gray-400 font-medium">{label}</span>
-                    <span className="text-sm text-gray-800 font-semibold truncate max-w-[140px] text-right">{value}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
 
           {/* Update Status */}
           <Card className="p-5">
@@ -280,7 +229,7 @@ export default function LeadDetails() {
           </Card>
         </div>
 
-        {/* ── RIGHT COLUMN (2 cols) ── */}
+        {/* ── RIGHT COLUMN ── */}
         <div className="lg:col-span-2 space-y-4">
 
           {/* Notes */}
@@ -318,46 +267,38 @@ export default function LeadDetails() {
             </div>
           </Card>
 
-          {/* Call History & Recordings */}
+          {/* ── Call Recordings ── */}
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-                <Headphones size={16} className="text-blue-500" /> Call History & Recordings
+                <Headphones size={15} className="text-blue-500" /> Call Recordings
               </h3>
-              <span className="text-xs text-gray-400">{recordings.length} Call{recordings.length !== 1 ? 's' : ''}</span>
+              <span className="text-xs text-gray-400">{recordings.length} call{recordings.length !== 1 ? 's' : ''}</span>
             </div>
-            
+
             <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
               {recordings.length === 0 && (
                 <div className="text-center py-8 text-gray-400">
-                  <Phone size={24} className="mx-auto mb-2 opacity-40 animate-pulse text-gray-300" />
-                  <p className="text-sm">No call recordings yet. Start a call to record.</p>
+                  <Phone size={22} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No recordings yet. Use the Call button to start.</p>
                 </div>
               )}
               {recordings.map((rec) => (
-                <div key={rec._id || rec.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                <div key={rec._id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                      <span className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
                         <Phone size={12} className="text-green-500" /> Outbound Call
-                      </p>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-                        {formatDuration(rec.duration)}
+                      </span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                        {fmtDuration(rec.duration)}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1.5">
-                      Called by <strong className="text-gray-700 font-semibold">{rec.calledBy?.name || 'User'}</strong> on {new Date(rec.createdAt).toLocaleString()}
+                    <p className="text-xs text-gray-400 mt-1">
+                      By <strong className="text-gray-600">{rec.calledBy?.name || 'User'}</strong> · {new Date(rec.createdAt).toLocaleString()}
                     </p>
                   </div>
-                  
-                  {/* Sleek Native audio player wrapper */}
-                  <div className="flex-shrink-0 w-full sm:w-auto">
-                    <audio
-                      src={getAudioUrl(rec.url)}
-                      controls
-                      className="h-8 w-full sm:w-48 outline-none"
-                    />
-                  </div>
+                  <audio src={getAudioUrl(rec.url)} controls className="h-8 w-full sm:w-52 flex-shrink-0" />
                 </div>
               ))}
             </div>
@@ -389,12 +330,12 @@ export default function LeadDetails() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Lead Information</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {[
-                { label: 'Lead ID', value: `#${lead.id}` },
-                { label: 'Created On', value: lead.createdAt },
-                { label: 'Source', value: lead.source || '—' },
-                { label: 'Assigned To', value: lead.assignedTo || 'Unassigned' },
-                { label: 'Deal Value', value: lead.value ? `₹${lead.value}` : '—' },
-                { label: 'Current Status', value: status },
+                { label: 'Lead ID',      value: `#${lead.id}` },
+                { label: 'Created On',   value: lead.createdAt },
+                { label: 'Source',       value: lead.source || '—' },
+                { label: 'Assigned To',  value: lead.assignedTo || 'Unassigned' },
+                { label: 'Deal Value',   value: lead.value ? `₹${lead.value}` : '—' },
+                { label: 'Status',       value: status },
               ].map(({ label, value }) => (
                 <div key={label} className="p-3 bg-gray-50 rounded-xl">
                   <p className="text-xs text-gray-400 font-medium mb-0.5">{label}</p>
@@ -406,12 +347,14 @@ export default function LeadDetails() {
         </div>
       </div>
 
+      {/* Call Panel overlay */}
       {callingLead && (
         <CallPanel
           lead={callingLead}
           onClose={() => setCallingLead(null)}
-          onRecordingSaved={(newRec) => {
+          onSaved={(newRec) => {
             setRecordings(prev => [newRec, ...prev]);
+            setCallingLead(null);
           }}
         />
       )}
