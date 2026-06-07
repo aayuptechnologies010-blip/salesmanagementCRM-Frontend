@@ -17,7 +17,13 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, currentUser } = useAuth();
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [currentUser, navigate]);
 
   // PWA installation states
   const [deferredPrompt, setDeferredPrompt] = useState(null);

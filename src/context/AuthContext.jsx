@@ -38,7 +38,11 @@ export function AuthProvider({ children }) {
         }
       } catch (err) {
         console.error('Session verification failed:', err.message);
-        logout();
+        // Only clear the credentials if the backend rejects the session (401/403).
+        // Otherwise (e.g. network/offline error), we keep the local cached user session.
+        if (err.status === 401 || err.status === 403) {
+          logout();
+        }
       } finally {
         setLoading(false);
       }

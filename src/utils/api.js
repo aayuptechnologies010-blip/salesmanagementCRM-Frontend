@@ -33,16 +33,22 @@ const getHeaders = () => {
   return headers;
 };
 
+const handleResponse = async (res) => {
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const error = new Error(data.message || 'Something went wrong');
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+};
+
 export const api = {
   async get(endpoint) {
     const res = await fetch(`${BASE_URL}${endpoint}`, {
       headers: getHeaders(),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.message || 'Something went wrong');
-    }
-    return res.json();
+    return handleResponse(res);
   },
 
   async post(endpoint, body) {
@@ -51,11 +57,7 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.message || 'Something went wrong');
-    }
-    return res.json();
+    return handleResponse(res);
   },
 
   async patch(endpoint, body) {
@@ -64,11 +66,7 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.message || 'Something went wrong');
-    }
-    return res.json();
+    return handleResponse(res);
   },
 
   async delete(endpoint, body) {
@@ -77,10 +75,6 @@ export const api = {
       headers: getHeaders(),
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.message || 'Something went wrong');
-    }
-    return res.json();
+    return handleResponse(res);
   },
 };
