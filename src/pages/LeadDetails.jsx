@@ -54,6 +54,16 @@ export default function LeadDetails() {
     api.get(`/recordings/${id}`).then(setRecordings).catch(() => {});
   }, [id]);
 
+  const handleDeleteRecording = async (recId) => {
+    if (!window.confirm('Are you sure you want to delete this recording?')) return;
+    try {
+      await api.delete(`/recordings/${recId}`);
+      setRecordings(prev => prev.filter(r => r._id !== recId));
+    } catch (err) {
+      alert(err.message || 'Failed to delete recording');
+    }
+  };
+
   if (!lead) return (
     <div className="flex flex-col items-center justify-center py-24 gap-3">
       <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
@@ -283,24 +293,35 @@ export default function LeadDetails() {
                   <p className="text-sm">No recordings yet. Use the Call button to start.</p>
                 </div>
               )}
-              {recordings.map((rec) => (
-                <div key={rec._id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-                        <Phone size={12} className="text-green-500" /> Outbound Call
-                      </span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                        {fmtDuration(rec.duration)}
-                      </span>
+              {recordings.map((rec) => {
+                const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
+                return (
+                  <div key={rec._id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl group">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                          <Phone size={12} className="text-green-500" /> Outbound Call
+                        </span>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                          {fmtDuration(rec.duration)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        By <strong className="text-gray-600">{rec.calledBy?.name || 'User'}</strong> · {new Date(rec.createdAt).toLocaleString()}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      By <strong className="text-gray-600">{rec.calledBy?.name || 'User'}</strong> · {new Date(rec.createdAt).toLocaleString()}
-                    </p>
+                    <div className="flex items-center gap-2 w-full sm:w-auto flex-shrink-0">
+                      <audio src={getAudioUrl(rec.url)} controls className="h-8 w-full sm:w-52" />
+                      {isAdmin && (
+                        <IconButton onClick={() => handleDeleteRecording(rec._id)} variant="red" title="Delete recording"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Trash2 size={13} />
+                        </IconButton>
+                      )}
+                    </div>
                   </div>
-                  <audio src={getAudioUrl(rec.url)} controls className="h-8 w-full sm:w-52 flex-shrink-0" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
 
