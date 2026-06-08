@@ -34,13 +34,18 @@ self.addEventListener('activate', (e) => {
 
 // Fetch Cache First / Network Fallback
 self.addEventListener('fetch', (e) => {
+  // Only handle GET requests and skip API calls
+  if (e.request.method !== 'GET' || e.request.url.includes('/api/')) {
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(e.request).catch(() => {
-        // Fallback or offline support
+      return fetch(e.request).catch((err) => {
+        console.error('Fetch failed in service worker:', err);
       });
     })
   );
