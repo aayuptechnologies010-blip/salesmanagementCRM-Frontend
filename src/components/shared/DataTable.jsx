@@ -45,42 +45,54 @@ export default function DataTable({ columns, data, selectable = false, onSelecti
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200">
+            <tr className="border-b border-gray-200 bg-white">
               {selectable && (
-                <th className="px-4 py-3 text-left">
+                <th className="sticky left-0 bg-white z-20 px-4 py-3 text-left">
                   <input type="checkbox" checked={selected.length === paginatedData.length && paginatedData.length > 0}
                     onChange={toggleAll} className="rounded border-gray-300 text-blue-500 focus:ring-blue-200" />
                 </th>
               )}
-              {columns.map(col => (
-                <th key={col.key} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                  {col.sortable ? (
-                    <button onClick={() => toggleSort(col.key)} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
-                      {col.label}
-                      <span className="flex flex-col">
-                        <ChevronUp size={10} className={sortKey === col.key && sortDir === 'asc' ? 'text-blue-500' : 'text-gray-300'} />
-                        <ChevronDown size={10} className={sortKey === col.key && sortDir === 'desc' ? 'text-blue-500' : 'text-gray-300'} />
-                      </span>
-                    </button>
-                  ) : col.label}
-                </th>
-              ))}
+              {columns.map((col, idx) => {
+                const isFirstCol = idx === 0;
+                const stickyClass = isFirstCol 
+                  ? `${selectable ? 'sticky left-[48px]' : 'sticky left-0'} bg-white z-20 border-r border-gray-200` 
+                  : '';
+                return (
+                  <th key={col.key} className={`${stickyClass} px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap`}>
+                    {col.sortable ? (
+                      <button onClick={() => toggleSort(col.key)} className="flex items-center gap-1 hover:text-gray-700 transition-colors">
+                        {col.label}
+                        <span className="flex flex-col">
+                          <ChevronUp size={10} className={sortKey === col.key && sortDir === 'asc' ? 'text-blue-500' : 'text-gray-300'} />
+                          <ChevronDown size={10} className={sortKey === col.key && sortDir === 'desc' ? 'text-blue-500' : 'text-gray-300'} />
+                        </span>
+                      </button>
+                    ) : col.label}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 bg-white">
             {paginatedData.map(row => (
-              <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+              <tr key={row.id} className="group hover:bg-gray-50 transition-colors">
                 {selectable && (
-                  <td className="px-4 py-3">
+                  <td className="sticky left-0 bg-white group-hover:bg-gray-50 transition-colors z-10 px-4 py-3">
                     <input type="checkbox" checked={selected.includes(row.id)} onChange={() => toggleRow(row.id)}
                       className="rounded border-gray-300 text-blue-500 focus:ring-blue-200" />
                   </td>
                 )}
-                {columns.map(col => (
-                  <td key={col.key} className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                    {col.render ? col.render(row[col.key], row) : row[col.key]}
-                  </td>
-                ))}
+                {columns.map((col, idx) => {
+                  const isFirstCol = idx === 0;
+                  const stickyClass = isFirstCol 
+                    ? `${selectable ? 'sticky left-[48px]' : 'sticky left-0'} bg-white group-hover:bg-gray-50 transition-colors z-10 border-r border-gray-200` 
+                    : '';
+                  return (
+                    <td key={col.key} className={`${stickyClass} px-4 py-3 text-gray-700 whitespace-nowrap`}>
+                      {col.render ? col.render(row[col.key], row) : row[col.key]}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
@@ -102,7 +114,7 @@ export default function DataTable({ columns, data, selectable = false, onSelecti
               }}
               className="border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
-              {[5, 10, 20, 50].map((size) => (
+              {[5, 10, 20, 50, 100].map((size) => (
                 <option key={size} value={size}>
                   {size}
                 </option>
@@ -124,19 +136,41 @@ export default function DataTable({ columns, data, selectable = false, onSelecti
             >
               Previous
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setCurrentPage(p)}
-                className={`w-7 h-7 rounded-lg flex items-center justify-center font-semibold transition-all ${
-                  activePage === p
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'border border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
+            {(() => {
+              const pages = [];
+              const maxVisible = 5;
+              if (totalPages <= maxVisible) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+              } else {
+                pages.push(1);
+                const start = Math.max(2, activePage - 1);
+                const end = Math.min(totalPages - 1, activePage + 1);
+                if (start > 2) pages.push('ellipsis-start');
+                for (let i = start; i <= end; i++) {
+                  pages.push(i);
+                }
+                if (end < totalPages - 1) pages.push('ellipsis-end');
+                pages.push(totalPages);
+              }
+              return pages.map((p, idx) => {
+                if (typeof p === 'string') {
+                  return <span key={p} className="px-1.5 text-gray-400">...</span>;
+                }
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center font-semibold transition-all ${
+                      activePage === p
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                );
+              });
+            })()}
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={activePage === totalPages}

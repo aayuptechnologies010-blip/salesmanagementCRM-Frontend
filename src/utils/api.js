@@ -77,4 +77,17 @@ export const api = {
     });
     return handleResponse(res);
   },
+
+  // For multipart/form-data (file uploads) — do NOT set Content-Type manually
+  async postForm(endpoint, formData) {
+    const token = localStorage.getItem('crm_token');
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    return handleResponse(res);
+  },
 };

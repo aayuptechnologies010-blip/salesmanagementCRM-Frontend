@@ -9,6 +9,7 @@ import { Input, Select, PrimaryButton, SecondaryButton } from '../components/sha
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import CallPanel from '../components/shared/CallPanel';
+import LeadImportModal from '../components/shared/LeadImportModal';
 
 const emptyForm = { 
   name: '', 
@@ -28,7 +29,13 @@ const emptyForm = {
   projectType: '', 
   techStack: '', 
   timeline: '',
-  value: ''
+  value: '',
+  // Client-specific fields
+  contactPerson: '',
+  pinCode: '',
+  typeOfCare: '',
+  hospitalZone: '',
+  tpaName: '',
 };
 
 export default function Leads() {
@@ -48,10 +55,13 @@ export default function Leads() {
   const [editId, setEditId] = useState(null);
   const [assignTo, setAssignTo] = useState('');
   const [callingLead, setCallingLead] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const filtered = leads.filter(l =>
-    (l.name.toLowerCase().includes(search.toLowerCase()) ||
-      l.company.toLowerCase().includes(search.toLowerCase())) &&
+    ((l.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (l.company || '').toLowerCase().includes(search.toLowerCase()) ||
+      (l.phone || '').toLowerCase().includes(search.toLowerCase()) ||
+      (l.email || '').toLowerCase().includes(search.toLowerCase())) &&
     (filterStatus ? l.status === filterStatus : true) &&
     (filterLeadType ? l.leadType === filterLeadType : true)
   );
@@ -157,7 +167,7 @@ export default function Leads() {
         {/* Add/Import — only for admin roles */}
         {!isSalesExec && (
           <div className="flex gap-2">
-            <SecondaryButton className="flex items-center gap-1.5">
+            <SecondaryButton onClick={() => setImportOpen(true)} className="flex items-center gap-1.5">
               <Upload size={14} /> Import
             </SecondaryButton>
             <PrimaryButton onClick={openAdd} className="flex items-center gap-1.5">
@@ -225,6 +235,11 @@ export default function Leads() {
           {(form.leadType === 'Client Project' || !form.leadType) && (
             <>
               <Input label="Company Name" value={form.company || ''} onChange={e => setForm({ ...form, company: e.target.value })} placeholder="Enter company name" />
+              <Input label="Contact Person" value={form.contactPerson || ''} onChange={e => setForm({ ...form, contactPerson: e.target.value })} placeholder="e.g. Dr. Rahul Sharma" />
+              <Input label="Pin Code" value={form.pinCode || ''} onChange={e => setForm({ ...form, pinCode: e.target.value })} placeholder="e.g. 400001" />
+              <Input label="Type of Care" value={form.typeOfCare || ''} onChange={e => setForm({ ...form, typeOfCare: e.target.value })} placeholder="e.g. ICU, OPD, General Ward" />
+              <Input label="Hospital Zone" value={form.hospitalZone || ''} onChange={e => setForm({ ...form, hospitalZone: e.target.value })} placeholder="e.g. North Zone, Zone A" />
+              <Input label="TPA Name" value={form.tpaName || ''} onChange={e => setForm({ ...form, tpaName: e.target.value })} placeholder="e.g. Medi Assist, Star Health TPA" />
               <Select label="Project Type" value={form.projectType || ''} onChange={e => setForm({ ...form, projectType: e.target.value })}>
                 <option value="">Select Project Type</option>
                 {['Web Application', 'Mobile Application', 'E-Commerce Website', 'UI/UX Design', 'Custom ERP/CRM Software', 'Other'].map(pt => <option key={pt}>{pt}</option>)}
@@ -269,6 +284,8 @@ export default function Leads() {
       {callingLead && (
         <CallPanel lead={callingLead} onClose={() => setCallingLead(null)} />
       )}
+
+      <LeadImportModal isOpen={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 }

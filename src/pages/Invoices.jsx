@@ -22,8 +22,8 @@ export default function Invoices() {
   }));
 
   const filteredInvoices = invoices.filter(inv =>
-    (inv.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inv.id.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    ((inv.client || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (inv.id || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
     (filterStatus ? inv.status === filterStatus : true)
   );
 

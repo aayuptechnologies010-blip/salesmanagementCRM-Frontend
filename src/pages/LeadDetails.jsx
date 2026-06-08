@@ -177,14 +177,15 @@ export default function LeadDetails() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Contact Details</h3>
             <div className="space-y-3">
               {[
-                { icon: Phone,      label: 'Phone',      value: lead.phone,                       clickable: !!lead.phone },
-                { icon: Mail,       label: 'Email',      value: lead.email },
-                { icon: Building2,  label: 'Company',    value: lead.company },
-                { icon: DollarSign, label: 'Deal Value', value: lead.value ? `₹${lead.value}` : '—' },
-                { icon: Globe,      label: 'Source',     value: lead.source },
-                { icon: User,       label: 'Assigned',   value: lead.assignedTo || 'Unassigned' },
-                { icon: Calendar,   label: 'Follow-up',  value: lead.followUpDate || '—' },
-              ].map(({ icon: Icon, label, value, clickable }) => (
+                { icon: Phone,      label: 'Phone',          value: lead.phone,                       clickable: !!lead.phone },
+                { icon: Mail,       label: 'Email',          value: lead.email },
+                { icon: Building2,  label: 'Company',        value: lead.company },
+                { icon: User,       label: 'Contact Person', value: lead.contactPerson || null },
+                { icon: DollarSign, label: 'Deal Value',     value: lead.value ? `₹${lead.value}` : '—' },
+                { icon: Globe,      label: 'Source',         value: lead.source },
+                { icon: User,       label: 'Assigned',       value: lead.assignedTo || 'Unassigned' },
+                { icon: Calendar,   label: 'Follow-up',      value: lead.followUpDate || '—' },
+              ].filter(item => item.value !== null && item.value !== undefined).map(({ icon: Icon, label, value, clickable }) => (
                 <div key={label} className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
                     <Icon size={13} className="text-gray-400" />
@@ -203,6 +204,28 @@ export default function LeadDetails() {
                 </div>
               ))}
             </div>
+
+            {/* Client-specific fields — show only if any are filled */}
+            {(lead.pinCode || lead.typeOfCare || lead.hospitalZone || lead.tpaName) && (
+              <>
+                <div className="border-t border-gray-100 mt-4 pt-4">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Client Details</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: 'Pin Code',      value: lead.pinCode },
+                      { label: 'Type of Care',  value: lead.typeOfCare },
+                      { label: 'Hospital Zone', value: lead.hospitalZone },
+                      { label: 'TPA Name',      value: lead.tpaName },
+                    ].filter(i => i.value).map(({ label, value }) => (
+                      <div key={label} className="bg-gray-50 rounded-xl p-2.5">
+                        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+                        <p className="text-sm font-semibold text-gray-800">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </Card>
 
           {/* Update Status */}
@@ -351,12 +374,16 @@ export default function LeadDetails() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Lead Information</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {[
-                { label: 'Lead ID',      value: `#${lead.id}` },
-                { label: 'Created On',   value: lead.createdAt },
-                { label: 'Source',       value: lead.source || '—' },
-                { label: 'Assigned To',  value: lead.assignedTo || 'Unassigned' },
-                { label: 'Deal Value',   value: lead.value ? `₹${lead.value}` : '—' },
-                { label: 'Status',       value: status },
+                { label: 'Lead ID',       value: `#${lead.id}` },
+                { label: 'Created On',    value: lead.createdAt },
+                { label: 'Source',        value: lead.source || '—' },
+                { label: 'Assigned To',   value: lead.assignedTo || 'Unassigned' },
+                { label: 'Deal Value',    value: lead.value ? `₹${lead.value}` : '—' },
+                { label: 'Status',        value: status },
+                ...(lead.pinCode      ? [{ label: 'Pin Code',      value: lead.pinCode }] : []),
+                ...(lead.typeOfCare   ? [{ label: 'Type of Care',  value: lead.typeOfCare }] : []),
+                ...(lead.hospitalZone ? [{ label: 'Hospital Zone', value: lead.hospitalZone }] : []),
+                ...(lead.tpaName      ? [{ label: 'TPA Name',      value: lead.tpaName }] : []),
               ].map(({ label, value }) => (
                 <div key={label} className="p-3 bg-gray-50 rounded-xl">
                   <p className="text-xs text-gray-400 font-medium mb-0.5">{label}</p>

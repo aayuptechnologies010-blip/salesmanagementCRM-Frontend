@@ -47,7 +47,7 @@ export default function AssignLeads() {
   const filteredLeads = leads.filter(l => {
     const s = search.toLowerCase();
     const matchesSearch = 
-      l.name.toLowerCase().includes(s) || 
+      ((l.name || '').toLowerCase().includes(s)) || 
       (l.company && l.company.toLowerCase().includes(s)) ||
       (l.phone && l.phone.toLowerCase().includes(s)) ||
       (l.email && l.email.toLowerCase().includes(s)) ||

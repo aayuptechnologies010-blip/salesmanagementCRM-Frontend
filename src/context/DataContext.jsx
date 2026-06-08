@@ -26,7 +26,7 @@ export function DataProvider({ children }) {
         
         // Fetch dashboard statistics or list APIs
         const [leadsData, followUpsData, activitiesData] = await Promise.all([
-          api.get('/leads'),
+          api.get('/leads?t=' + Date.now()),
           api.get('/followups'),
           api.get('/activities'),
         ]);
@@ -45,15 +45,39 @@ export function DataProvider({ children }) {
   }, [currentUser]);
 
   // Helper to map DB _id to frontend id
+  const cleanPhone = (p) => {
+    if (!p) return '';
+    const str = String(p).trim();
+    // Pure numeric already
+    if (/^\d{7,15}$/.test(str)) return str.slice(0, 15);
+    // Extract Mob: number from complex strings
+    const mob = str.match(/[Mm]ob(?:ile)?\s*:?\s*(\d{7,15})/);
+    if (mob) return mob[1].slice(0, 15);
+    // Extract any 10-digit sequence
+    const digits = str.replace(/\D/g, '');
+    const match = digits.match(/[6-9]\d{9}/);
+    if (match) return match[0];
+    return digits.length >= 7 ? digits.slice(0, 15) : '';
+  };
+
   const getMappedItem = (item) => {
     if (!item) return null;
     return {
       ...item,
-      id: item._id || item.id
+      id: item._id || item.id,
+      phone: cleanPhone(item.phone),
+      email: item.email || '',
+      company: item.company || '',
     };
   };
 
-  const mappedLeads = leads.map(getMappedItem);
+  const isValidPhone = (p) => /^\d{7,15}$/.test((p || '').trim());
+
+  const mappedLeads = leads.map(getMappedItem).sort((a, b) => {
+    const aHas = isValidPhone(a.phone) ? 1 : 0;
+    const bHas = isValidPhone(b.phone) ? 1 : 0;
+    return bHas - aHas;
+  });
   const mappedFollowUps = followUps.map(getMappedItem);
   const mappedActivities = activities.map(getMappedItem);
 
@@ -83,6 +107,28 @@ export function DataProvider({ children }) {
   const deleteLead = async (ids) => {
     await api.delete('/leads', { ids });
     setLeads(prev => prev.filter(l => !ids.includes(l._id) && !ids.includes(l.id)));
+  };
+
+  // Refresh all leads from backend (used after import)
+  const refreshLeads = async () => {
+    const leadsData = await api.get('/leads?t=' + Date.now());
+    setLeads(leadsData.leads || []);
+  };
+
+  // Upload CSV for preview — returns { totalRows, previewRows, detectedColumns, filePath }
+  const importLeadsPreview = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.postForm('/leads/import/preview', formData);
+  };
+
+  // Confirm import using temp filename from preview
+  const importLeadsConfirm = async (filename) => {
+    const result = await api.post('/leads/import/confirm', { filename });
+    await refreshLeads();
+    const activitiesData = await api.get('/activities');
+    setActivities(activitiesData);
+    return result;
   };
 
   const assignLead = async (ids, assignTo, followUpDate = '', userName = 'Admin') => {
@@ -154,6 +200,7 @@ export function DataProvider({ children }) {
       activities: mappedActivities,
       getLeadsForUser, getFollowUpsForUser, getActivitiesForUser,
       addLead, updateLead, deleteLead, assignLead,
+      importLeadsPreview, importLeadsConfirm,
       addFollowUp, updateFollowUp, deleteFollowUp,
       loading
     }}>

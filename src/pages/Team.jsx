@@ -24,8 +24,8 @@ export default function Team() {
 
   const members = allUsers.filter(u => u.role !== 'Super Admin');
   const filteredMembers = members.filter(m =>
-    (m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.email.toLowerCase().includes(search.toLowerCase())) &&
+    ((m.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (m.email || '').toLowerCase().includes(search.toLowerCase())) &&
     (filterRole ? m.role === filterRole : true) &&
     (filterTeam ? m.team === filterTeam : true)
   );
