@@ -51,9 +51,10 @@ export function AuthProvider({ children }) {
     verifyUser();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, dryRun = false) => {
     try {
       const data = await api.post('/auth/login', { email, password });
+      if (dryRun) return { credValid: true };
       localStorage.setItem('crm_token', data.token);
       localStorage.setItem('crm_session', JSON.stringify(data.user));
       setCurrentUser(data.user);
@@ -68,6 +69,7 @@ export function AuthProvider({ children }) {
       }
       return { success: true, user: data.user };
     } catch (err) {
+      if (dryRun) return { credValid: false, message: err.message };
       return { success: false, message: err.message };
     }
   };
