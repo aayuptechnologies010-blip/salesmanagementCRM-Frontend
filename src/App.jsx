@@ -28,9 +28,13 @@ function LoginApprovalNotification() {
 
     const registerSocket = () => socket.emit('register', currentUser.email);
 
-    socket.connect();
-    registerSocket();
-    socket.on('connect', registerSocket); // re-register on reconnect
+    if (socket.connected) {
+      registerSocket();
+    } else {
+      socket.once('connect', registerSocket);
+      socket.connect();
+    }
+    socket.on('connect', registerSocket); // re-register on every reconnect
 
     const onLoginRequest = ({ email, requestSocketId }) => {
       setRequest({ email, requestSocketId });

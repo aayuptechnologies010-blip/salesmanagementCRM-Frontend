@@ -47,8 +47,6 @@ export default function Login() {
 
   // Socket: Device B listens for approve/reject
   useEffect(() => {
-    socket.connect();
-
     const onApproved = async () => {
       setWaitingApproval(false);
       if (!pendingCreds) return;
@@ -82,8 +80,16 @@ export default function Login() {
       setError(result.message || 'Invalid email or password.');
       return;
     }
-    // Credentials valid — now check if another session exists
-    socket.emit('request_login', { email: form.email, requestSocketId: socket.id });
+    // Credentials valid — connect socket first, then emit after connection
+    const emitRequest = () => {
+      socket.emit('request_login', { email: form.email, requestSocketId: socket.id });
+    };
+    if (socket.connected) {
+      emitRequest();
+    } else {
+      socket.once('connect', emitRequest);
+      socket.connect();
+    }
     setPendingCreds({ email: form.email, password: form.password });
     setWaitingApproval(true);
   };
