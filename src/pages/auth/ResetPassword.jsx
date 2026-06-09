@@ -1,19 +1,40 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Zap, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { PrimaryButton } from '../../components/shared/FormElements';
+import { api } from '../../utils/api';
 
 export default function ResetPassword() {
-  const [show, setShow] = useState({ p: false, c: false });
-  const [done, setDone] = useState(false);
-  const [form, setForm] = useState({ password: '', confirm: '' });
+  const [show, setShow]     = useState({ p: false, c: false });
+  const [done, setDone]     = useState(false);
+  const [form, setForm]     = useState({ password: '', confirm: '' });
+  const [error, setError]   = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
 
   const rules = [
-    { label: 'At least 8 characters', ok: form.password.length >= 8 },
+    { label: 'At least 8 characters',    ok: form.password.length >= 8 },
     { label: 'Contains uppercase letter', ok: /[A-Z]/.test(form.password) },
-    { label: 'Contains a number', ok: /\d/.test(form.password) },
+    { label: 'Contains a number',         ok: /\d/.test(form.password) },
   ];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (form.password !== form.confirm) { setError('Passwords do not match'); return; }
+    if (!token) { setError('Invalid or missing reset token'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      await api.post('/auth/reset-password', { token, password: form.password });
+      setDone(true);
+    } catch (err) {
+      setError(err.message || 'Reset failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

@@ -9,6 +9,7 @@ export function DataProvider({ children }) {
   const [leads, setLeads] = useState([]);
   const [followUps, setFollowUps] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,12 +23,14 @@ export function DataProvider({ children }) {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [leadsData, followUpsData] = await Promise.all([
+        const [leadsData, followUpsData, invoicesData] = await Promise.all([
           api.get('/leads'),
           api.get('/followups'),
+          api.get('/invoices'),
         ]);
         setLeads(leadsData.leads || []);
         setFollowUps(followUpsData || []);
+        setInvoices(invoicesData || []);
       } catch (err) {
         console.error('Failed to fetch data:', err.message);
       } finally {
@@ -65,11 +68,7 @@ export function DataProvider({ children }) {
     };
   };
 
-  const mappedLeads = leads.map(getMappedItem).sort((a, b) => {
-    const aHas = a.phone && a.phone.length >= 7 ? 1 : 0;
-    const bHas = b.phone && b.phone.length >= 7 ? 1 : 0;
-    return bHas - aHas;
-  });
+  const mappedLeads = leads.map(getMappedItem);
   const mappedFollowUps = followUps.map(getMappedItem);
   const mappedActivities = activities.map(getMappedItem);
 
@@ -97,6 +96,23 @@ export function DataProvider({ children }) {
   const refreshLeads = async () => {
     const leadsData = await api.get('/leads');
     setLeads(leadsData.leads || []);
+  };
+
+  const addInvoice = async (data) => {
+    const newInvoice = await api.post('/invoices', data);
+    setInvoices(prev => [newInvoice, ...prev]);
+    return newInvoice;
+  };
+
+  const updateInvoice = async (id, data) => {
+    const updated = await api.patch(`/invoices/${id}`, data);
+    setInvoices(prev => prev.map(inv => (inv._id === id || inv.id === id) ? updated : inv));
+    return updated;
+  };
+
+  const deleteInvoice = async (id) => {
+    await api.delete(`/invoices/${id}`);
+    setInvoices(prev => prev.filter(inv => inv._id !== id && inv.id !== id));
   };
 
   const importLeadsPreview = async (file) => {
@@ -169,10 +185,12 @@ export function DataProvider({ children }) {
       leads: mappedLeads,
       followUps: mappedFollowUps,
       activities: mappedActivities,
+      invoices,
       getLeadsForUser, getFollowUpsForUser, getActivitiesForUser,
       addLead, updateLead, deleteLead, assignLead,
       importLeadsPreview, importLeadsConfirm, refreshLeads,
       addFollowUp, updateFollowUp, deleteFollowUp,
+      addInvoice, updateInvoice, deleteInvoice,
       loading
     }}>
       {children}

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, UserCheck, CalendarClock, BarChart3, Settings, X, UsersRound } from 'lucide-react';
+import { LayoutDashboard, Users, UserCheck, CalendarClock, BarChart3, Settings, X, UsersRound, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const allNavItems = [
@@ -8,6 +8,7 @@ const allNavItems = [
   { to: '/assign', icon: UserCheck, label: 'Assign Leads', roles: ['Super Admin', 'Admin'] },
   { to: '/followups', icon: CalendarClock, label: 'Follow-ups', roles: ['Super Admin', 'Admin', 'Sales Executive'] },
   { to: '/team', icon: UsersRound, label: 'Team Members', roles: ['Super Admin', 'Admin'] },
+  { to: '/invoices', icon: FileText, label: 'Invoices', roles: ['Super Admin', 'Admin'] },
   { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['Super Admin', 'Admin'] },
   { to: '/settings', icon: Settings, label: 'Settings', roles: ['Super Admin', 'Admin', 'Sales Executive'] },
 ];

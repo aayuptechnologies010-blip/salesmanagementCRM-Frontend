@@ -8,7 +8,7 @@ import { Input, Select, PrimaryButton, SecondaryButton, IconButton } from '../co
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 
-const emptyForm = { name: '', email: '', password: '', role: 'Sales Executive', team: 'Team Alpha', status: 'Active' };
+const emptyForm = { name: '', email: '', password: '', role: 'Sales Executive', team: '', status: 'Active' };
 
 export default function Team() {
   const { teamMembers, allUsers, addUser, updateUser, deleteUser } = useAuth();
@@ -55,7 +55,7 @@ export default function Team() {
     if (window.confirm('Are you sure you want to remove this member?')) deleteUser(id);
   };
 
-  const teams = [...new Set(members.map(m => m.team))];
+  const teams = [...new Set(members.map(m => m.team).filter(Boolean))];
 
   const columns = [
     {
@@ -166,7 +166,10 @@ export default function Team() {
               className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none"
             >
               <option value="">All Teams</option>
-              {['Team Alpha', 'Team Beta', 'Team Gamma'].map(t => <option key={t}>{t}</option>)}
+              {teams.length > 0
+                ? teams.map(t => <option key={t}>{t}</option>)
+                : null
+              }
             </select>
           </div>
         </div>
@@ -201,8 +204,11 @@ export default function Team() {
             {['Admin', 'Sales Executive'].map(r => <option key={r}>{r}</option>)}
           </Select>
           <Select label="Team" value={form.team} onChange={e => setForm({ ...form, team: e.target.value })}>
-            {['Team Alpha', 'Team Beta', 'Team Gamma'].map(t => <option key={t}>{t}</option>)}
+            <option value="">Select Team / Enter below</option>
+            {teams.map(t => <option key={t}>{t}</option>)}
           </Select>
+          <Input label="Or enter new team name" value={teams.includes(form.team) ? '' : form.team}
+            onChange={e => setForm({ ...form, team: e.target.value })} placeholder="e.g. Team Delta" />
           <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
             {['Active', 'Inactive'].map(s => <option key={s}>{s}</option>)}
           </Select>

@@ -69,7 +69,7 @@ const stageColors = {
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-medium text-gray-800 text-sm">{lead.name}</h4>
                     <span className="text-xs font-medium bg-green-50 text-green-600 px-2 py-0.5 rounded-md border border-green-100">
-                      ${lead.value || '1,000'}
+                      {lead.value ? `₹${lead.value}` : '—'}
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mb-3">{lead.company}</p>

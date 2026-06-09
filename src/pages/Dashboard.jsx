@@ -1,63 +1,79 @@
+import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { TrendingUp, Users, UserPlus, UserCheck, Target, ArrowUpRight, Clock } from 'lucide-react';
 import Card from '../components/shared/Card';
 import StatusBadge from '../components/shared/StatusBadge';
-import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../utils/api';
 
-const COLORS = ['#E5E7EB', '#DBEAFE', '#3B82F6', '#93C5FD'];
+const COLORS = ['#E5E7EB', '#DBEAFE', '#3B82F6', '#93C5FD', '#60A5FA', '#1D4ED8'];
 
 export default function Dashboard() {
-  const { getLeadsForUser, getFollowUpsForUser, getActivitiesForUser } = useData();
-  const { teamMembers, currentUser } = useAuth();
-
-  const leads = getLeadsForUser(currentUser);
-  const followUps = getFollowUpsForUser(currentUser);
-  const activities = getActivitiesForUser(currentUser);
+  const { currentUser } = useAuth();
   const isSalesExec = currentUser?.role === 'Sales Executive';
 
-  const today = new Date().toISOString().slice(0, 10);
-  const totalLeads = leads.length;
-  const newToday = leads.filter(l => l.createdAt === today).length;
-  const assigned = leads.filter(l => l.assignedTo).length;
-  const converted = leads.filter(l => l.status === 'Won').length;
-  const conversionRate = totalLeads > 0 ? `${Math.round((converted / totalLeads) * 100)}%` : '0%';
+  const [stats, setStats] = useState(null);
+  const [revenueData, setRevenueData] = useState([]);
 
-  const kpis = [
-    { label: 'Total Leads', value: totalLeads, icon: Users, change: '', color: 'bg-blue-50 text-blue-500' },
-    { label: 'New Today', value: newToday, icon: UserPlus, change: '', color: 'bg-gray-100 text-gray-500' },
-    ...(!isSalesExec ? [{ label: 'Assigned', value: assigned, icon: UserCheck, change: '', color: 'bg-blue-50 text-blue-500' }] : []),
-    { label: 'Converted', value: converted, icon: Target, change: '', color: 'bg-blue-100 text-blue-600' },
-    { label: 'Conversion Rate', value: conversionRate, icon: TrendingUp, change: '', color: 'bg-blue-50 text-blue-500' },
+  useEffect(() => {
+    api.get('/dashboard').then(data => {
+      setStats(data);
+    }).catch(() => {});
+
+    // Revenue: last 6 months from Won leads
+    api.get('/leads?status=Won&limit=1000').then(data => {
+      const allLeads = data.leads || [];
+      const months = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const label = d.toLocaleString('default', { month: 'short' });
+        const y = d.getFullYear();
+        const m = d.getMonth();
+        const revenue = allLeads
+          .filter(l => {
+            if (!l.createdAt) return false;
+            const ld = new Date(l.createdAt);
+            return ld.getFullYear() === y && ld.getMonth() === m;
+          })
+          .reduce((sum, l) => sum + (parseFloat(String(l.value).replace(/,/g, '')) || 0), 0);
+        months.push({ month: label, revenue });
+      }
+      setRevenueData(months);
+    }).catch(() => {});
+  }, []);
+
+  if (!stats) {
+    return (
+      <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
+        Loading dashboard...
+      </div>
+    );
+  }
+
+  const { kpis, leadsByStatus, todayFollowUps, recentActivities, teamPerformance } = stats;
+
+  const leadStatusChart = (leadsByStatus || []).map(s => ({ name: s._id, value: s.count }));
+
+  const kpiCards = [
+    { label: 'Total Leads', value: kpis?.totalLeads ?? 0, icon: Users, color: 'bg-blue-50 text-blue-500' },
+    { label: 'New Today', value: kpis?.newToday ?? 0, icon: UserPlus, color: 'bg-gray-100 text-gray-500' },
+    ...(!isSalesExec ? [{ label: 'Assigned', value: kpis?.assigned ?? 0, icon: UserCheck, color: 'bg-blue-50 text-blue-500' }] : []),
+    { label: 'Converted', value: kpis?.converted ?? 0, icon: Target, color: 'bg-blue-100 text-blue-600' },
+    { label: 'Conversion Rate', value: kpis?.totalLeads > 0 ? `${Math.round((kpis.converted / kpis.totalLeads) * 100)}%` : '0%', icon: TrendingUp, color: 'bg-blue-50 text-blue-500' },
   ];
-
-  const leadStatusChart = [
-    { name: 'New', value: leads.filter(l => l.status === 'New').length },
-    { name: 'Interested', value: leads.filter(l => l.status === 'Interested').length },
-    { name: 'Won', value: leads.filter(l => l.status === 'Won').length },
-    { name: 'Lost', value: leads.filter(l => l.status === 'Lost').length },
-  ];
-
-  const teamChart = teamMembers.map(m => ({
-    name: m.name.split(' ')[0],
-    leads: leads.filter(l => l.assignedTo === m.name).length,
-    converted: leads.filter(l => l.assignedTo === m.name && l.status === 'Won').length,
-  }));
-
-  const todayFollowUps = followUps.filter(f => f.date === today || f.status === 'Pending').slice(0, 3);
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {kpis.map(({ label, value, icon: Icon, change, color }) => (
+        {kpiCards.map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="p-5">
             <div className="flex items-start justify-between mb-3">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
                 <Icon size={18} />
               </div>
               <span className="flex items-center gap-0.5 text-xs text-blue-500 font-medium">
-                <ArrowUpRight size={12} />{change}
+                <ArrowUpRight size={12} />
               </span>
             </div>
             <p className="text-2xl font-bold text-gray-800">{value}</p>
@@ -66,18 +82,17 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-semibold text-gray-800">Revenue Overview</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Monthly revenue trend</p>
+              <p className="text-xs text-gray-400 mt-0.5">Monthly revenue trend (Won leads)</p>
             </div>
             <span className="text-xs bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg font-medium">Last 6 months</span>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={[]}>
+            <LineChart data={revenueData}>
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `₹${v / 1000}k`} />
               <Tooltip formatter={v => [`₹${v.toLocaleString()}`, 'Revenue']} contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: 12 }} />
@@ -94,7 +109,7 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie data={leadStatusChart} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={3}>
-                {leadStatusChart.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
+                {leadStatusChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
               <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: 12 }} />
             </PieChart>
@@ -102,7 +117,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 gap-1.5 mt-2">
             {leadStatusChart.map((item, i) => (
               <div key={item.name} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i] }} />
+                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                 <span className="text-xs text-gray-600">{item.name} ({item.value})</span>
               </div>
             ))}
@@ -110,7 +125,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Team Performance + Follow-ups — Team chart hidden for Sales Exec */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {!isSalesExec && (
           <Card className="lg:col-span-2 p-5">
@@ -119,7 +133,7 @@ export default function Dashboard() {
               <p className="text-xs text-gray-400 mt-0.5">Leads vs Conversions</p>
             </div>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={teamChart} barGap={4}>
+              <BarChart data={teamPerformance || []} barGap={4}>
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #E5E7EB', fontSize: 12 }} />
@@ -136,11 +150,11 @@ export default function Dashboard() {
             <Clock size={16} className="text-gray-400" />
           </div>
           <div className="space-y-3">
-            {todayFollowUps.length === 0 && (
+            {(todayFollowUps || []).length === 0 && (
               <p className="text-sm text-gray-400 text-center py-4">No follow-ups today</p>
             )}
-            {todayFollowUps.map(f => (
-              <div key={f.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl hover:bg-blue-50 transition-colors cursor-pointer">
+            {(todayFollowUps || []).map(f => (
+              <div key={f._id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl hover:bg-blue-50 transition-colors cursor-pointer">
                 <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
                   <Clock size={14} className="text-blue-500" />
                 </div>
@@ -155,11 +169,9 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Recent Activities */}
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-800">Recent Activities</h3>
-          <button className="text-xs text-blue-500 hover:text-blue-600 font-medium">View all</button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -171,12 +183,12 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {activities.slice(0, 8).map(a => (
-                <tr key={a.id} className="hover:bg-gray-50 transition-colors">
+              {(recentActivities || []).slice(0, 8).map(a => (
+                <tr key={a._id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600">
-                        {a.user.split(' ').map(n => n[0]).join('')}
+                        {(a.user || '?').split(' ').map(n => n[0]).join('')}
                       </div>
                       <span className="text-gray-700 font-medium">{a.user}</span>
                     </div>

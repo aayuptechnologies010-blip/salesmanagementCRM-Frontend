@@ -2,10 +2,27 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Zap, ArrowLeft, Mail } from 'lucide-react';
 import { Input, PrimaryButton } from '../../components/shared/FormElements';
+import { api } from '../../utils/api';
 
 export default function ForgotPassword() {
   const [sent, setSent] = useState(false);
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      await api.post('/auth/forgot-password', { email });
+      setSent(true);
+    } catch (err) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -25,10 +42,13 @@ export default function ForgotPassword() {
                 <h2 className="text-xl font-bold text-gray-800">Forgot password?</h2>
                 <p className="text-sm text-gray-500 mt-1">Enter your email and we'll send you a reset link</p>
               </div>
-              <form onSubmit={e => { e.preventDefault(); setSent(true); }} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <Input label="Email Address" type="email" placeholder="Enter your registered email"
                   value={email} onChange={e => setEmail(e.target.value)} required />
-                <PrimaryButton type="submit" className="w-full">Send Reset Link</PrimaryButton>
+                {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-xl">{error}</p>}
+                <PrimaryButton type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                </PrimaryButton>
               </form>
             </>
           ) : (

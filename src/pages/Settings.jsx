@@ -3,6 +3,7 @@ import { Building2, Bell, Shield, Save, User, Edit2, X, Camera, Phone, Mail, Bri
 import Card from '../components/shared/Card';
 import { Input, Select, PrimaryButton, SecondaryButton } from '../components/shared/FormElements';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../utils/api';
 
 const allTabs = [
   { id: 'company', label: 'Company Profile', icon: Building2, roles: ['Super Admin', 'Admin', 'Sales Executive'] },
@@ -52,8 +53,24 @@ export default function Settings() {
   const [editMode, setEditMode] = useState(false);
   const [perms, setPerms] = useState(defaultPerms);
   const [notifs, setNotifs] = useState({
-    newLead: true, assignment: true, followup: true, conversion: false, weeklyReport: true,
+    newLead:      currentUser?.notifications?.newLead      ?? true,
+    assignment:   currentUser?.notifications?.assignment   ?? true,
+    followup:     currentUser?.notifications?.followup     ?? true,
+    conversion:   currentUser?.notifications?.conversion   ?? false,
+    weeklyReport: currentUser?.notifications?.weeklyReport ?? true,
   });
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifSaved,  setNotifSaved]  = useState(false);
+
+  const handleSaveNotifs = async () => {
+    setNotifSaving(true);
+    try {
+      await api.patch('/auth/notifications', { notifications: notifs });
+      setNotifSaved(true);
+      setTimeout(() => setNotifSaved(false), 2500);
+    } catch {}
+    finally { setNotifSaving(false); }
+  };
 
   const [form, setForm] = useState({
     name: currentUser?.name || '',
@@ -235,7 +252,9 @@ export default function Settings() {
               </div>
             ))}
             <div className="flex justify-end">
-              <PrimaryButton><Save size={14} /> Save Preferences</PrimaryButton>
+              <PrimaryButton onClick={handleSaveNotifs} disabled={notifSaving}>
+                <Save size={14} /> {notifSaving ? 'Saving...' : notifSaved ? 'Saved ✓' : 'Save Preferences'}
+              </PrimaryButton>
             </div>
           </div>
         </Card>

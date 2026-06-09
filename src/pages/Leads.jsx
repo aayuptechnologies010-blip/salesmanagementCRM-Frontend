@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Upload, Plus, Trash2, UserCheck, Calendar, Phone } from 'lucide-react';
+import { Search, Filter, Upload, Plus, Trash2, UserCheck, Calendar, Phone, Download } from 'lucide-react';
 import Card from '../components/shared/Card';
 import DataTable from '../components/shared/DataTable';
 import StatusBadge from '../components/shared/StatusBadge';
@@ -73,6 +73,24 @@ export default function Leads() {
     setModal(null);
   };
 
+  const handleExport = () => {
+    const rows = [
+      ['Name','Phone','Email','Company','Source','Status','Lead Type','Assigned To','Follow-up Date','Deal Value'],
+      ...filtered.map(l => [
+        l.name, l.phone, l.email, l.company, l.source, l.status,
+        l.leadType, l.assignedTo, l.followUpDate, l.value
+      ])
+    ];
+    const csv = rows.map(r => r.map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `leads_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const columns = [
     {
       key: 'name', label: 'Name', sortable: true, render: (v, row) => (
@@ -126,7 +144,7 @@ export default function Leads() {
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
             className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
             <option value="">All Status</option>
-            {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost', 'No Response'].map(s => <option key={s}>{s}</option>)}
+            {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Interested', 'Won', 'Lost', 'No Response'].map(s => <option key={s}>{s}</option>)}
           </select>
           <select value={filterLeadType} onChange={e => setFilterLeadType(e.target.value)}
             className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
@@ -149,6 +167,9 @@ export default function Leads() {
           <div className="flex gap-2">
             <SecondaryButton onClick={() => setImportOpen(true)} className="flex items-center gap-1.5">
               <Upload size={14} /> Import
+            </SecondaryButton>
+            <SecondaryButton onClick={handleExport} className="flex items-center gap-1.5">
+              <Download size={14} /> Export
             </SecondaryButton>
             <PrimaryButton onClick={openAdd} className="flex items-center gap-1.5">
               <Plus size={14} /> Add Lead
@@ -189,7 +210,7 @@ export default function Leads() {
             {['Website', 'Referral', 'LinkedIn', 'Cold Call', 'Email Campaign', 'Conference'].map(s => <option key={s}>{s}</option>)}
           </Select>
           <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-            {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost', 'No Response'].map(s => <option key={s}>{s}</option>)}
+            {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Interested', 'Won', 'Lost', 'No Response'].map(s => <option key={s}>{s}</option>)}
           </Select>
 
           {form.leadType === 'Student Training' && (

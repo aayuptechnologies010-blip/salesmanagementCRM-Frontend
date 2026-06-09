@@ -11,31 +11,13 @@ export default function InvoiceDetail() {
   const [searchParams] = useSearchParams();
   const autoPrint = searchParams.get('print') === 'true';
 
-  const { leads } = useData();
-
-  // Re-map leads to get the exact same invoice structure as in Invoices.jsx
-  const invoices = leads.map((lead, i) => {
-    const rawVal = lead.value ? parseInt(lead.value.replace(/\D/g, '')) : 1500;
-    const baseVal = isNaN(rawVal) ? 1500 : rawVal;
-    return {
-      id: `INV-2024-${1000 + i}`,
-      client: lead.company,
-      contact: lead.name,
-      email: lead.email || `${lead.name.toLowerCase().replace(/\s/g, '')}@company.com`,
-      phone: lead.phone || '+91 98765 43210',
-      amount: Math.round(baseVal * 1.5),
-      date: new Date(Date.now() - i * 86400000 * 3).toISOString().split('T')[0],
-      status: i % 3 === 0 ? 'Paid' : i % 3 === 1 ? 'Pending' : 'Overdue',
-    };
-  });
-
-  const invoice = invoices.find(inv => inv.id === id);
+  const { invoices } = useData();
+  const invoice = invoices.find(inv => (inv._id === id || inv.id === id));
 
   useEffect(() => {
     if (invoice && autoPrint) {
       const timer = setTimeout(() => {
         window.print();
-        // Go back after print dialog closes
         navigate('/invoices');
       }, 700);
       return () => clearTimeout(timer);
@@ -53,67 +35,45 @@ export default function InvoiceDetail() {
     );
   }
 
-  // Calculate items breakdown based on amount
-  const item1Val = Math.round(invoice.amount * 0.7);
-  const item2Val = Math.round(invoice.amount * 0.2);
-  const item3Val = Math.round(invoice.amount * 0.1);
-  const tax = Math.round(invoice.amount * 0.18);
-  const grandTotal = invoice.amount + tax;
+  const amount = invoice.amount || 0;
+  const item1Val = Math.round(amount * 0.7);
+  const item2Val = Math.round(amount * 0.2);
+  const item3Val = Math.round(amount * 0.1);
+  const tax = Math.round(amount * 0.18);
+  const grandTotal = amount + tax;
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const dueDate = invoice.dueDate ||
+    (invoice.issueDate
+      ? new Date(new Date(invoice.issueDate).getTime() + 15 * 86400000).toISOString().split('T')[0]
+      : '—');
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Print styles */}
       <style>{`
         @media print {
-          /* Hide app layout elements */
-          body * {
-            visibility: hidden;
-          }
-          #invoice-document, #invoice-document * {
-            visibility: visible;
-          }
-          #invoice-document {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 20px;
-            box-shadow: none !important;
-            border: none !important;
-            background: white !important;
-          }
-          .no-print {
-            display: none !important;
-          }
+          body * { visibility: hidden; }
+          #invoice-document, #invoice-document * { visibility: visible; }
+          #invoice-document { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; box-shadow: none !important; border: none !important; background: white !important; }
+          .no-print { display: none !important; }
         }
       `}</style>
 
-      {/* Top Action Bar (no-print) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-        <button
-          onClick={() => navigate('/invoices')}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors font-medium"
-        >
+        <button onClick={() => navigate('/invoices')}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors font-medium">
           <ArrowLeft size={16} /> Back to Invoices
         </button>
         <div className="flex gap-2 w-full sm:w-auto">
-          <SecondaryButton onClick={handlePrint} className="flex-1 sm:flex-initial">
+          <SecondaryButton onClick={() => window.print()} className="flex-1 sm:flex-initial">
             <Printer size={16} /> Print Invoice
           </SecondaryButton>
-          <PrimaryButton onClick={handlePrint} className="flex-1 sm:flex-initial">
+          <PrimaryButton onClick={() => window.print()} className="flex-1 sm:flex-initial">
             <Download size={16} /> Save PDF
           </PrimaryButton>
         </div>
       </div>
 
-      {/* Real Looking Invoice Sheet */}
-      <div id="invoice-document" className="bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden p-8 sm:p-12 transition-all">
-        {/* Header Block */}
+      <div id="invoice-document" className="bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden p-8 sm:p-12">
         <div className="flex flex-col sm:flex-row justify-between gap-6 border-b border-gray-100 pb-8">
           <div>
             <div className="flex items-center gap-2 text-blue-600 mb-3">
@@ -135,39 +95,31 @@ export default function InvoiceDetail() {
                 invoice.status === 'Paid' ? 'bg-green-50 text-green-700 border-green-200' :
                 invoice.status === 'Pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                 'bg-red-50 text-red-700 border-red-200'
-              }`}>
-                {invoice.status}
-              </span>
+              }`}>{invoice.status}</span>
               <h1 className="text-3xl font-extrabold text-gray-800 tracking-tight mt-3">INVOICE</h1>
-              <p className="text-sm font-semibold text-gray-600 mt-1">{invoice.id}</p>
+              <p className="text-sm font-semibold text-gray-600 mt-1">{invoice.invoiceNumber}</p>
             </div>
           </div>
         </div>
 
-        {/* Client & Date Block */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 py-8 border-b border-gray-100">
           <div>
             <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Billed To</h5>
             <p className="font-bold text-gray-800 text-base">{invoice.client}</p>
             <p className="text-sm text-gray-600 mt-1 font-semibold">{invoice.contact}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{invoice.email}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{invoice.phone}</p>
           </div>
           <div className="sm:text-right space-y-2">
             <div>
               <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Date Issued</h5>
-              <p className="text-sm font-semibold text-gray-700">{invoice.date}</p>
+              <p className="text-sm font-semibold text-gray-700">{invoice.issueDate || '—'}</p>
             </div>
             <div>
               <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Due Date</h5>
-              <p className="text-sm font-semibold text-gray-700">
-                {new Date(new Date(invoice.date).getTime() + 15 * 86400000).toISOString().split('T')[0]}
-              </p>
+              <p className="text-sm font-semibold text-gray-700">{dueDate}</p>
             </div>
           </div>
         </div>
 
-        {/* Invoice Items Table */}
         <div className="py-8 text-sm">
           <table className="w-full text-left">
             <thead>
@@ -210,7 +162,6 @@ export default function InvoiceDetail() {
           </table>
         </div>
 
-        {/* Pricing Subtotal / GST block */}
         <div className="flex flex-col sm:flex-row justify-between gap-6 border-t border-gray-100 pt-8">
           <div>
             <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Details</h5>
@@ -225,7 +176,7 @@ export default function InvoiceDetail() {
           <div className="sm:text-right min-w-[240px] space-y-3">
             <div className="flex justify-between text-sm text-gray-600">
               <span>Subtotal</span>
-              <span className="font-semibold">₹{invoice.amount.toLocaleString()}</span>
+              <span className="font-semibold">₹{amount.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-600">
               <span>Tax (GST 18%)</span>
@@ -238,7 +189,6 @@ export default function InvoiceDetail() {
           </div>
         </div>
 
-        {/* Terms & Footer Signature */}
         <div className="flex flex-col sm:flex-row justify-between items-end gap-6 pt-12 border-t border-gray-100 mt-8">
           <div className="text-xs text-gray-400 max-w-sm">
             <p className="font-bold text-gray-500 mb-1">Terms & Conditions</p>
