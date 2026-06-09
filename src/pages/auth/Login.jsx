@@ -20,8 +20,11 @@ export default function Login() {
   const { login, currentUser } = useAuth();
 
   useEffect(() => {
-    if (currentUser) {
-      navigate('/dashboard', { replace: true });
+    if (currentUser) navigate('/dashboard', { replace: true });
+    // Show session expired message if redirected from api.js
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reason') === 'session_expired') {
+      setError('Aapka session kisi aur device pe login hone ke karan band ho gaya. Dobara login karein.');
     }
   }, [currentUser, navigate]);
 

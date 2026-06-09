@@ -24,8 +24,9 @@ export default function Team() {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterTeam, setFilterTeam] = useState('');
-  const [selectedMember, setSelectedMember] = useState(null); // for member leads modal
+  const [selectedMember, setSelectedMember] = useState(null);
   const [leadSearch, setLeadSearch] = useState('');
+  const [leadStatusFilter, setLeadStatusFilter] = useState('All');
 
   const members = allUsers.filter(u => u.role !== 'Super Admin');
   const isAdmin = currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin';
@@ -40,14 +41,11 @@ export default function Team() {
     (filterTeam ? m.team === filterTeam : true)
   );
 
-  // Leads count excluding 'New' status
-  const getActiveLeadsCount = (member) => member.leadsCount ?? leads.filter(l => l.assignedTo === member.name && l.status !== 'New').length;
-  const getConvertedCount = (member) => member.convertedCount ?? leads.filter(l => l.assignedTo === member.name && l.status === 'Won').length;
+  // Active leads = jo assigned hain (koi bhi status)
+  const getActiveLeadsCount = (member) => leads.filter(l => l.assignedTo === member.name).length;
+  const getConvertedCount = (member) => leads.filter(l => l.assignedTo === member.name && l.status === 'Won').length;
 
-  // Member leads for modal — all statuses, from DataContext
-  const getMemberLeads = (memberName) => leads.filter(l => l.assignedTo === memberName);
-
-  const openAdd = () => { setForm(emptyForm); setEditId(null); setFormError(''); setModal('form'); };
+const openAdd = () => { setForm(emptyForm); setEditId(null); setFormError(''); setModal('form'); };
   const openEdit = (m) => { setForm({ ...m, password: '' }); setEditId(m.id || m._id); setFormError(''); setModal('form'); };
 
   const handleSave = () => {
@@ -68,15 +66,20 @@ export default function Team() {
   const openMemberLeads = (member) => {
     setSelectedMember(member);
     setLeadSearch('');
+    setLeadStatusFilter('All');
     setModal('memberLeads');
   };
 
   const teams = [...new Set(members.map(m => m.team).filter(Boolean))];
 
-  const memberLeads = selectedMember ? getMemberLeads(selectedMember.name) : [];
+  const memberLeads = selectedMember ? leads.filter(l => l.assignedTo === selectedMember.name) : [];
+  // Dynamic statuses from actual leads of this member
+  const memberStatuses = ['All', ...new Set(memberLeads.map(l => l.status).filter(Boolean))];
   const filteredMemberLeads = memberLeads.filter(l => {
     const s = leadSearch.toLowerCase();
-    return !s || (l.name || '').toLowerCase().includes(s) || (l.company || '').toLowerCase().includes(s) || (l.status || '').toLowerCase().includes(s);
+    const matchSearch = !s || (l.name || '').toLowerCase().includes(s) || (l.company || '').toLowerCase().includes(s);
+    const matchStatus = leadStatusFilter === 'All' || l.status === leadStatusFilter;
+    return matchSearch && matchStatus;
   });
 
   const columns = [
@@ -201,82 +204,104 @@ export default function Team() {
 
       {/* Member Leads Modal */}
       <Modal isOpen={modal === 'memberLeads'} onClose={() => setModal(null)}
-        title={selectedMember ? `${selectedMember.name}'s Leads` : ''} size="xl">
+        title={selectedMember ? `${selectedMember.name}'s Assigned Leads` : ''} size="xl">
         {selectedMember && (
           <div className="space-y-4">
-            {/* Member summary */}
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
+
+            {/* Member summary + status-wise count */}
+            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl flex-wrap">
               <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
                 {selectedMember.profileImage
                   ? <img src={selectedMember.profileImage} alt={selectedMember.name} className="w-full h-full object-cover" />
                   : selectedMember.avatar}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-800">{selectedMember.name}</p>
                 <p className="text-xs text-gray-500">{selectedMember.role} · {selectedMember.team || '—'}</p>
               </div>
-              <div className="flex gap-4 text-center">
-                <div>
-                  <p className="text-lg font-bold text-blue-600">{memberLeads.length}</p>
-                  <p className="text-xs text-gray-400">Total</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-green-600">{memberLeads.filter(l => l.status === 'Won').length}</p>
-                  <p className="text-xs text-gray-400">Won</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-red-500">{memberLeads.filter(l => l.status === 'Lost').length}</p>
-                  <p className="text-xs text-gray-400">Lost</p>
-                </div>
+              <div className="flex gap-3 flex-wrap">
+                {[
+                  { label: 'Total', value: memberLeads.length, color: 'text-blue-600' },
+                  { label: 'Won', value: memberLeads.filter(l => l.status === 'Won').length, color: 'text-green-600' },
+                  { label: 'Lost', value: memberLeads.filter(l => l.status === 'Lost').length, color: 'text-red-500' },
+                  { label: 'Pending', value: memberLeads.filter(l => !['Won','Lost'].includes(l.status)).length, color: 'text-orange-500' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="text-center">
+                    <p className={`text-lg font-bold ${color}`}>{value}</p>
+                    <p className="text-xs text-gray-400">{label}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Search */}
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
-                placeholder="Search by name, company or status..."
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 outline-none bg-white" />
+            {/* Search + Dynamic Status Filter chips */}
+            <div className="flex flex-col gap-2">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
+                  placeholder="Search by name or company..."
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 outline-none bg-white" />
+              </div>
+              {/* Dynamic status chips — only statuses that exist in this member's leads */}
+              <div className="flex gap-1.5 flex-wrap">
+                {memberStatuses.map(s => (
+                  <button key={s} onClick={() => setLeadStatusFilter(s)}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                      leadStatusFilter === s
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                    }`}>
+                    {s}{s !== 'All' && ` (${memberLeads.filter(l => l.status === s).length})`}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Leads table */}
-            <div className="max-h-96 overflow-y-auto rounded-xl border border-gray-100">
+            <div className="max-h-[420px] overflow-y-auto rounded-xl border border-gray-100">
               {filteredMemberLeads.length === 0 ? (
                 <div className="text-center py-8 text-gray-400 text-sm">No leads found.</div>
               ) : (
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-gray-50 border-b border-gray-100 z-10">
                     <tr>
-                      {['Lead Name', 'Company', 'Status', 'Value', 'Follow-up', 'Notes'].map(h => (
+                      {['Lead', 'Status', 'Value', 'Follow-up', 'Last Remark'].map(h => (
                         <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {filteredMemberLeads.map(lead => (
-                      <tr key={lead._id || lead.id}
-                        onClick={() => { setModal(null); navigate(`/leads/${lead._id || lead.id}`); }}
-                        className="hover:bg-blue-50 cursor-pointer transition-colors">
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-blue-600 hover:underline">{lead.name}</p>
-                          <p className="text-xs text-gray-400">{lead.phone}</p>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">{lead.company || '—'}</td>
-                        <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
-                        <td className="px-4 py-3 text-gray-700 font-medium">{lead.value ? `₹${lead.value}` : '—'}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{lead.followUpDate || '—'}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">
-                          {lead.notes?.length > 0
-                            ? <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-lg font-semibold">{lead.notes.length} note{lead.notes.length > 1 ? 's' : ''}</span>
-                            : '—'}
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredMemberLeads.map(lead => {
+                      const lastNote = lead.notes?.length > 0 ? lead.notes[0] : null;
+                      return (
+                        <tr key={lead._id || lead.id}
+                          onClick={() => { setModal(null); navigate(`/leads/${lead._id || lead.id}`); }}
+                          className="hover:bg-blue-50 cursor-pointer transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-blue-600">{lead.name}</p>
+                            <p className="text-xs text-gray-400">{lead.company || '—'} · {lead.phone || ''}</p>
+                          </td>
+                          <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
+                          <td className="px-4 py-3 text-gray-700 font-medium text-xs">{lead.value ? `₹${lead.value}` : '—'}</td>
+                          <td className="px-4 py-3 text-gray-500 text-xs">{lead.followUpDate || '—'}</td>
+                          <td className="px-4 py-3">
+                            {lastNote ? (
+                              <div>
+                                <p className="text-xs text-gray-700 line-clamp-2">{lastNote.text || lastNote}</p>
+                                {lastNote.time && <p className="text-[10px] text-gray-400 mt-0.5">{lastNote.time}</p>}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-300 italic">No remarks</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
             </div>
-            <p className="text-xs text-gray-400 text-center">Click any lead row to view full details</p>
+            <p className="text-xs text-gray-400 text-center">Click any row to view full lead details, notes & activity</p>
           </div>
         )}
       </Modal>

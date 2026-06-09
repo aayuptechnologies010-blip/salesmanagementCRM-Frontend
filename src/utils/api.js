@@ -36,6 +36,13 @@ const getHeaders = () => {
 const handleResponse = async (res) => {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
+    // Session expired — dusre device se login hua
+    if (data.code === 'SESSION_EXPIRED' || data.message === 'SESSION_EXPIRED') {
+      localStorage.removeItem('crm_token');
+      localStorage.removeItem('crm_session');
+      window.location.href = '/login?reason=session_expired';
+      return;
+    }
     const error = new Error(data.message || 'Something went wrong');
     error.status = res.status;
     throw error;
