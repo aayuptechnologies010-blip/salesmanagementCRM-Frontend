@@ -7,7 +7,6 @@ import { Input, Select, PrimaryButton, SecondaryButton, GhostButton, IconButton 
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
-import CallPanel from '../components/shared/CallPanel';
 
 const statusOptions = ['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'];
 
@@ -46,7 +45,6 @@ export default function LeadDetails() {
   const [fuTime, setFuTime]     = useState('10:00');
   const [fuAssign, setFuAssign] = useState('');
   const [scheduled, setScheduled] = useState(false);
-  const [callingLead, setCallingLead] = useState(null);
   const [recordings, setRecordings]   = useState([]);
 
   useEffect(() => {
@@ -147,10 +145,10 @@ export default function LeadDetails() {
             </div>
             <div className="flex gap-2 flex-wrap">
               {lead.phone && (
-                <button onClick={() => setCallingLead(lead)}
+                <a href={`tel:${lead.phone}`}
                   className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 rounded-xl text-sm font-semibold transition-all">
                   <Phone size={15} /> Call
-                </button>
+                </a>
               )}
               <a href={`https://wa.me/${lead.phone?.replace(/\D/g, '')}?text=Hi ${lead.name.split(' ')[0]},`}
                 target="_blank" rel="noreferrer"
@@ -193,10 +191,10 @@ export default function LeadDetails() {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-400">{label}</p>
                     {clickable ? (
-                      <button onClick={() => setCallingLead(lead)}
+                      <a href={`tel:${value}`}
                         className="text-sm text-green-600 hover:text-green-700 hover:underline font-medium text-left truncate block w-full">
                         {value}
-                      </button>
+                      </a>
                     ) : (
                       <p className="text-sm text-gray-800 font-medium truncate">{value}</p>
                     )}
@@ -395,17 +393,6 @@ export default function LeadDetails() {
         </div>
       </div>
 
-      {/* Call Panel overlay */}
-      {callingLead && (
-        <CallPanel
-          lead={callingLead}
-          onClose={() => setCallingLead(null)}
-          onSaved={(newRec) => {
-            setRecordings(prev => [newRec, ...prev]);
-            setCallingLead(null);
-          }}
-        />
-      )}
     </div>
   );
 }

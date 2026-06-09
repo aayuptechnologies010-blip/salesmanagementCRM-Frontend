@@ -8,7 +8,6 @@ import Modal from '../components/shared/Modal';
 import { Input, Select, PrimaryButton, SecondaryButton } from '../components/shared/FormElements';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import CallPanel from '../components/shared/CallPanel';
 import LeadImportModal from '../components/shared/LeadImportModal';
 
 const emptyForm = { 
@@ -54,7 +53,6 @@ export default function Leads() {
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [assignTo, setAssignTo] = useState('');
-  const [callingLead, setCallingLead] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
 
   const filtered = leads.filter(l =>
@@ -107,10 +105,10 @@ export default function Leads() {
     },
     {
       key: 'phone', label: 'Phone', render: (v, row) => (
-        <button onClick={() => setCallingLead(row)}
+        <a href={`tel:${v}`}
           className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 hover:underline font-medium">
           <Phone size={13} className="text-blue-500" /> {v}
-        </button>
+        </a>
       )
     },
     { key: 'email', label: 'Email', render: v => <span className="text-gray-500">{v}</span> },
@@ -280,10 +278,6 @@ export default function Leads() {
           <PrimaryButton onClick={handleAssign} className="flex items-center gap-1.5"><UserCheck size={14} /> Assign</PrimaryButton>
         </div>
       </Modal>
-
-      {callingLead && (
-        <CallPanel lead={callingLead} onClose={() => setCallingLead(null)} />
-      )}
 
       <LeadImportModal isOpen={importOpen} onClose={() => setImportOpen(false)} />
     </div>
