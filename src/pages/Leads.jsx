@@ -9,6 +9,7 @@ import { Input, Select, PrimaryButton, SecondaryButton } from '../components/sha
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import LeadImportModal from '../components/shared/LeadImportModal';
+import CallPanel from '../components/shared/CallPanel';
 
 const emptyForm = { 
   name: '', 
@@ -54,6 +55,7 @@ export default function Leads() {
   const [editId, setEditId] = useState(null);
   const [assignTo, setAssignTo] = useState('');
   const [importOpen, setImportOpen] = useState(false);
+  const [callLead, setCallLead] = useState(null);
 
   const filtered = leads.filter(l =>
     ((l.name || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -105,10 +107,10 @@ export default function Leads() {
     },
     {
       key: 'phone', label: 'Phone', render: (v, row) => (
-        <a href={`tel:${v}`}
-          className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 hover:underline font-medium">
-          <Phone size={13} className="text-blue-500" /> {v}
-        </a>
+        <button onClick={() => setCallLead(row)}
+          className="inline-flex items-center gap-1.5 text-green-600 hover:text-green-700 hover:underline font-medium">
+          <Phone size={13} className="text-green-500" /> {v}
+        </button>
       )
     },
     { key: 'email', label: 'Email', render: v => <span className="text-gray-500">{v}</span> },
@@ -280,6 +282,7 @@ export default function Leads() {
       </Modal>
 
       <LeadImportModal isOpen={importOpen} onClose={() => setImportOpen(false)} />
+      {callLead && <CallPanel lead={callLead} onClose={() => setCallLead(null)} />}
     </div>
   );
 }

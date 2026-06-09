@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, Building2, Globe, Calendar, Edit2, Plus, CheckCircle, Clock, MessageCircle, DollarSign, User, Tag, Trash2, Headphones } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, Building2, Globe, Calendar, Edit2, Plus, CheckCircle, Clock, MessageCircle, DollarSign, User, Tag, Trash2 } from 'lucide-react';
 import Card from '../components/shared/Card';
 import StatusBadge from '../components/shared/StatusBadge';
 import { Input, Select, PrimaryButton, SecondaryButton, GhostButton, IconButton } from '../components/shared/FormElements';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../utils/api';
+import CallPanel from '../components/shared/CallPanel';
 
 const statusOptions = ['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'];
 
@@ -18,13 +18,6 @@ const statusConfig = {
   Negotiation: { color: 'bg-indigo-500', light: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   Won:         { color: 'bg-green-500',  light: 'bg-green-50 text-green-700 border-green-200' },
   Lost:        { color: 'bg-gray-400',   light: 'bg-gray-100 text-gray-600 border-gray-200' },
-};
-
-const fmtDuration = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
-
-const getAudioUrl = (urlPath) => {
-  const base = import.meta.env?.VITE_API_URL || 'http://localhost:5009/api';
-  return `${base.replace('/api', '')}${urlPath}`;
 };
 
 export default function LeadDetails() {
@@ -45,22 +38,7 @@ export default function LeadDetails() {
   const [fuTime, setFuTime]     = useState('10:00');
   const [fuAssign, setFuAssign] = useState('');
   const [scheduled, setScheduled] = useState(false);
-  const [recordings, setRecordings]   = useState([]);
-
-  useEffect(() => {
-    if (!id) return;
-    api.get(`/recordings/${id}`).then(setRecordings).catch(() => {});
-  }, [id]);
-
-  const handleDeleteRecording = async (recId) => {
-    if (!window.confirm('Are you sure you want to delete this recording?')) return;
-    try {
-      await api.delete(`/recordings/${recId}`);
-      setRecordings(prev => prev.filter(r => r._id !== recId));
-    } catch (err) {
-      alert(err.message || 'Failed to delete recording');
-    }
-  };
+  const [callOpen, setCallOpen] = useState(false);
 
   if (!lead) return (
     <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -145,10 +123,10 @@ export default function LeadDetails() {
             </div>
             <div className="flex gap-2 flex-wrap">
               {lead.phone && (
-                <a href={`tel:${lead.phone}`}
+                <button onClick={() => setCallOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 rounded-xl text-sm font-semibold transition-all">
                   <Phone size={15} /> Call
-                </a>
+                </button>
               )}
               <a href={`https://wa.me/${lead.phone?.replace(/\D/g, '')}?text=Hi ${lead.name.split(' ')[0]},`}
                 target="_blank" rel="noreferrer"
@@ -191,10 +169,10 @@ export default function LeadDetails() {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-400">{label}</p>
                     {clickable ? (
-                      <a href={`tel:${value}`}
+                      <button onClick={() => setCallOpen(true)}
                         className="text-sm text-green-600 hover:text-green-700 hover:underline font-medium text-left truncate block w-full">
                         {value}
-                      </a>
+                      </button>
                     ) : (
                       <p className="text-sm text-gray-800 font-medium truncate">{value}</p>
                     )}
@@ -298,54 +276,6 @@ export default function LeadDetails() {
             </div>
           </Card>
 
-          {/* ── Call Recordings ── */}
-          <Card className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-                <Headphones size={15} className="text-blue-500" /> Call Recordings
-              </h3>
-              <span className="text-xs text-gray-400">{recordings.length} call{recordings.length !== 1 ? 's' : ''}</span>
-            </div>
-
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {recordings.length === 0 && (
-                <div className="text-center py-8 text-gray-400">
-                  <Phone size={22} className="mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No recordings yet. Use the Call button to start.</p>
-                </div>
-              )}
-              {recordings.map((rec) => {
-                const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
-                return (
-                  <div key={rec._id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl group">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-                          <Phone size={12} className="text-green-500" /> Outbound Call
-                        </span>
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                          {fmtDuration(rec.duration)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">
-                        By <strong className="text-gray-600">{rec.calledBy?.name || 'User'}</strong> · {new Date(rec.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto flex-shrink-0">
-                      <audio src={getAudioUrl(rec.url)} controls className="h-8 w-full sm:w-52" />
-                      {isAdmin && (
-                        <IconButton onClick={() => handleDeleteRecording(rec._id)} variant="red" title="Delete recording"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Trash2 size={13} />
-                        </IconButton>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-
           {/* Activity Timeline */}
           <Card className="p-5">
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-5">Activity Timeline</h3>
@@ -393,6 +323,7 @@ export default function LeadDetails() {
         </div>
       </div>
 
+      {callOpen && <CallPanel lead={lead} onClose={() => setCallOpen(false)} />}
     </div>
   );
 }
