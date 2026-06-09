@@ -164,104 +164,100 @@ export default function FollowUps() {
 
       {/* Detail Modal */}
       <Modal isOpen={!!selected} onClose={() => setSelected(null)} title="Follow-up Details" size="md">
-        {selected && (() => {
-          const { f, linkedLead } = selected;
-          return (
-            <div className="space-y-4">
-              {/* Status + Priority */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <StatusBadge status={f.status} />
-                <StatusBadge status={f.priority} />
-                <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold ${
-                  f.status === 'Done' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'
-                }`}>
-                  {f.status === 'Done' ? '✓ Completed' : '⏳ Pending'}
-                </span>
-              </div>
+        {selected && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <StatusBadge status={selected.f.status} />
+              <StatusBadge status={selected.f.priority} />
+              <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold ${
+                selected.f.status === 'Done' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'
+              }`}>
+                {selected.f.status === 'Done' ? '✓ Completed' : '⏳ Pending'}
+              </span>
+            </div>
 
-              {/* Follow-up Info */}
-              <div className="bg-gray-50 rounded-2xl p-4 space-y-2.5">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Follow-up Info</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { icon: Calendar, label: 'Date',        value: f.date },
-                    { icon: Clock,    label: 'Time',        value: f.time || '—' },
-                    { icon: User,     label: 'Assigned To', value: f.assignedTo || '—' },
-                    { icon: Tag,      label: 'Priority',    value: f.priority || '—' },
-                  ].map(({ icon: Icon, label, value }) => (
-                    <div key={label} className="flex items-center gap-2">
-                      <Icon size={13} className="text-gray-400 flex-shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-gray-400">{label}</p>
-                        <p className="text-sm font-semibold text-gray-800">{value}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Lead Details */}
-              <div className="bg-blue-50 rounded-2xl p-4 space-y-2.5">
-                <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide mb-1">Lead Details</p>
-                {linkedLead ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                        {linkedLead.name?.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-800">{linkedLead.name}</p>
-                        <p className="text-xs text-gray-500">{linkedLead.company}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {[
-                        { icon: Phone,     label: 'Phone',  value: linkedLead.phone },
-                        { icon: Mail,      label: 'Email',  value: linkedLead.email },
-                        { icon: Tag,       label: 'Status', value: linkedLead.status },
-                        { icon: Building2, label: 'Source', value: linkedLead.source },
-                      ].filter(i => i.value).map(({ icon: Icon, label, value }) => (
-                        <div key={label} className="flex items-center gap-1.5">
-                          <Icon size={12} className="text-blue-400 flex-shrink-0" />
-                          <div>
-                            <p className="text-[10px] text-gray-400">{label}</p>
-                            <p className="text-xs font-semibold text-gray-800 truncate">{value}</p>
-                          </div>
-                        </div>
-                      ))}
+            <div className="bg-gray-50 rounded-2xl p-4">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Follow-up Info</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { icon: Calendar, label: 'Date',        value: selected.f.date },
+                  { icon: Clock,    label: 'Time',        value: selected.f.time || '—' },
+                  { icon: User,     label: 'Assigned To', value: selected.f.assignedTo || '—' },
+                  { icon: Tag,      label: 'Priority',    value: selected.f.priority || '—' },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <Icon size={13} className="text-gray-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-gray-400">{label}</p>
+                      <p className="text-sm font-semibold text-gray-800">{value}</p>
                     </div>
                   </div>
-                ) : (
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">{f.lead}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{f.company || '—'}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-between gap-2 mt-2">
-                <button onClick={() => { toggleDone(f); setSelected(null); }}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                    f.status === 'Done'
-                      ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                      : 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'
-                  }`}>
-                  <CheckCircle size={14} /> {f.status === 'Done' ? 'Mark Pending' : 'Mark Done'}
-                </button>
-                <div className="flex gap-2">
-                  {linkedLead && (
-                    <SecondaryButton onClick={() => { setSelected(null); navigate(`/leads/${linkedLead._id || linkedLead.id}`); }}>
-                      View Lead <ArrowRight size={14} />
-                    </SecondaryButton>
-                  )}
-                  <PrimaryButton onClick={() => openEdit(f)}>
-                    <Edit2 size={14} /> Edit
-                  </PrimaryButton>
-                </div>
+                ))}
               </div>
             </div>
-          );
-        })()}
+
+            <div className="bg-blue-50 rounded-2xl p-4">
+              <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide mb-3">Lead Details</p>
+              {selected.linkedLead ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                      {selected.linkedLead.name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800">{selected.linkedLead.name}</p>
+                      <p className="text-xs text-gray-500">{selected.linkedLead.company}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { icon: Phone,     label: 'Phone',  value: selected.linkedLead.phone },
+                      { icon: Mail,      label: 'Email',  value: selected.linkedLead.email },
+                      { icon: Tag,       label: 'Status', value: selected.linkedLead.status },
+                      { icon: Building2, label: 'Source', value: selected.linkedLead.source },
+                    ].filter(i => i.value).map(({ icon: Icon, label, value }) => (
+                      <div key={label} className="flex items-center gap-1.5">
+                        <Icon size={12} className="text-blue-400 flex-shrink-0" />
+                        <div>
+                          <p className="text-[10px] text-gray-400">{label}</p>
+                          <p className="text-xs font-semibold text-gray-800 truncate">{value}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">{selected.f.lead}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{selected.f.company || '—'}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between gap-2 pt-2">
+              <button
+                onClick={() => { toggleDone(selected.f); setSelected(null); }}
+                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  selected.f.status === 'Done'
+                    ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    : 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'
+                }`}>
+                <CheckCircle size={14} />
+                {selected.f.status === 'Done' ? 'Mark Pending' : 'Mark Done'}
+              </button>
+              <div className="flex gap-2">
+                {selected.linkedLead && (
+                  <SecondaryButton onClick={() => { setSelected(null); navigate(`/leads/${selected.linkedLead._id || selected.linkedLead.id}`); }}>
+                    View Lead <ArrowRight size={14} />
+                  </SecondaryButton>
+                )}
+                <PrimaryButton onClick={() => openEdit(selected.f)}>
+                  <Edit2 size={14} /> Edit
+                </PrimaryButton>
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Add/Edit Modal */}

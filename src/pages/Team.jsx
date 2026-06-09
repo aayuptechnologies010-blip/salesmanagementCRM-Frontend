@@ -6,17 +6,15 @@ import StatusBadge from '../components/shared/StatusBadge';
 import Modal from '../components/shared/Modal';
 import { Input, Select, PrimaryButton, SecondaryButton, IconButton } from '../components/shared/FormElements';
 import { useAuth } from '../context/AuthContext';
-import { useData } from '../context/DataContext';
 
 const emptyForm = { name: '', email: '', password: '', role: 'Sales Executive', team: '', status: 'Active' };
 
 export default function Team() {
   const { teamMembers, allUsers, addUser, updateUser, deleteUser } = useAuth();
-  const { leads } = useData();
 
-  const getStats = (name) => ({
-    leads:     leads.filter(l => l.assignedTo === name).length,
-    converted: leads.filter(l => l.assignedTo === name && l.status === 'Won').length,
+  const getStats = (member) => ({
+    leads:     member.leadsCount     ?? 0,
+    converted: member.convertedCount ?? 0,
   });
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -73,8 +71,8 @@ export default function Team() {
       )
     },
     { key: 'team', label: 'Team' },
-    { key: 'leads',     label: 'Leads',     sortable: true, render: (_, row) => getStats(row.name).leads },
-    { key: 'converted', label: 'Converted', sortable: true, render: (_, row) => getStats(row.name).converted },
+    { key: 'leads',     label: 'Leads',     sortable: true, render: (_, row) => getStats(row).leads },
+    { key: 'converted', label: 'Converted', sortable: true, render: (_, row) => getStats(row).converted },
     { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
     {
       key: 'contact', label: 'Contact', render: (_, row) => (
@@ -123,7 +121,7 @@ export default function Team() {
                   ))}
                 </div>
                 <div className="mt-3 text-xs text-gray-400">
-                  {teamList.reduce((s, m) => s + getStats(m.name).leads, 0)} total leads · {teamList.reduce((s, m) => s + getStats(m.name).converted, 0)} converted
+                  {teamList.reduce((s, m) => s + getStats(m).leads, 0)} total leads · {teamList.reduce((s, m) => s + getStats(m).converted, 0)} converted
                 </div>
               </Card>
             );

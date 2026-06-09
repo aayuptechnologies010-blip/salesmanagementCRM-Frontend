@@ -12,8 +12,8 @@ export default function Reports() {
 
   const teamPerformance = teamMembers.map(m => ({
     name: m.name.split(' ')[0],
-    leads: leads.filter(l => l.assignedTo === m.name).length,
-    converted: leads.filter(l => l.assignedTo === m.name && l.status === 'Won').length,
+    leads: m.leadsCount ?? leads.filter(l => l.assignedTo === m.name).length,
+    converted: m.convertedCount ?? leads.filter(l => l.assignedTo === m.name && l.status === 'Won').length,
   }));
 
   const conversionFunnel = [
@@ -123,8 +123,8 @@ export default function Reports() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {teamMembers.map(m => {
-                  const mLeads = leads.filter(l => l.assignedTo === m.name).length;
-                  const mConverted = leads.filter(l => l.assignedTo === m.name && l.status === 'Won').length;
+                  const mLeads = m.leadsCount ?? leads.filter(l => l.assignedTo === m.name).length;
+                  const mConverted = m.convertedCount ?? leads.filter(l => l.assignedTo === m.name && l.status === 'Won').length;
                   const rate = mLeads > 0 ? Math.round((mConverted / mLeads) * 100) : 0;
                   return (
                     <tr key={m.id} className="hover:bg-gray-50 transition-colors">
