@@ -61,19 +61,28 @@ export default function FollowUps() {
   const { teamMembers, currentUser } = useAuth();
   const navigate = useNavigate();
   const followUps = getFollowUpsForUser(currentUser);
-  const isSalesExec = currentUser?.role === 'Sales Executive';
   const [filter, setFilter] = useState('All');
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
-  const [selected, setSelected] = useState(null); // for detail modal
+  const [selectedFollowUp, setSelectedFollowUp] = useState(null);
 
   const filtered = followUps.filter(f => filter === 'All' || f.status === filter);
 
+  const openDetail = (f) => {
+    const linkedLead = leads.find(l => l.name === f.lead || l._id === f.leadRef || l.id === f.leadRef);
+    setSelectedFollowUp({ f, linkedLead });
+  };
+
+  const closeDetail = () => setSelectedFollowUp(null);
+
   const openAdd = () => { setForm(emptyForm); setEditId(null); setModal('form'); };
+
   const openEdit = (f) => {
-    setSelected(null);
-    setTimeout(() => { setForm({ ...f }); setEditId(f.id); setModal('form'); }, 100);
+    closeDetail();
+    setForm({ ...f });
+    setEditId(f.id || f._id);
+    setModal('form');
   };
 
   const handleSave = () => {
@@ -84,7 +93,7 @@ export default function FollowUps() {
   };
 
   const toggleDone = (f) => {
-    updateFollowUp(f.id, { ...f, status: f.status === 'Done' ? 'Pending' : 'Done' });
+    updateFollowUp(f.id || f._id, { ...f, status: f.status === 'Done' ? 'Pending' : 'Done' });
   };
 
   return (
@@ -120,13 +129,15 @@ export default function FollowUps() {
             {filtered.length === 0 && (
               <Card className="p-8 text-center text-gray-400 text-sm">No follow-ups found.</Card>
             )}
-            {filtered.map(f => {
-              const linkedLead = leads.find(l => l.name === f.lead);
-              return (
-              <Card key={f.id} className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setSelected({ f, linkedLead })}>
+            {filtered.map(f => (
+              <div
+                key={f.id || f._id}
+                onClick={() => openDetail(f)}
+                className="bg-white border border-gray-200 rounded-2xl p-4 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
+              >
                 <div className="flex items-start gap-4">
-                  <button onClick={e => { e.stopPropagation(); toggleDone(f); }}
+                  <button
+                    onClick={e => { e.stopPropagation(); toggleDone(f); }}
                     className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors
                       ${f.status === 'Done' ? 'bg-gray-100 hover:bg-gray-200' : 'bg-blue-50 hover:bg-blue-100'}`}>
                     {f.status === 'Done'
@@ -151,28 +162,27 @@ export default function FollowUps() {
                     </div>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
-                    <IconButton onClick={e => { e.stopPropagation(); openEdit(f); }} variant="blue" title="Edit Follow-up"><Edit2 size={14} /></IconButton>
-                    <IconButton onClick={e => { e.stopPropagation(); deleteFollowUp(f.id); }} variant="red" title="Delete Follow-up"><Trash2 size={14} /></IconButton>
+                    <IconButton onClick={e => { e.stopPropagation(); openEdit(f); }} variant="blue" title="Edit"><Edit2 size={14} /></IconButton>
+                    <IconButton onClick={e => { e.stopPropagation(); deleteFollowUp(f.id || f._id); }} variant="red" title="Delete"><Trash2 size={14} /></IconButton>
                   </div>
                 </div>
-              </Card>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Detail Modal */}
-      <Modal isOpen={!!selected} onClose={() => setSelected(null)} title="Follow-up Details" size="md">
-        {selected && (
+      <Modal isOpen={selectedFollowUp !== null} onClose={closeDetail} title="Follow-up Details" size="md">
+        {selectedFollowUp && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <StatusBadge status={selected.f.status} />
-              <StatusBadge status={selected.f.priority} />
+              <StatusBadge status={selectedFollowUp.f.status} />
+              <StatusBadge status={selectedFollowUp.f.priority} />
               <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold ${
-                selected.f.status === 'Done' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'
+                selectedFollowUp.f.status === 'Done' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'
               }`}>
-                {selected.f.status === 'Done' ? '✓ Completed' : '⏳ Pending'}
+                {selectedFollowUp.f.status === 'Done' ? '✓ Completed' : '⏳ Pending'}
               </span>
             </div>
 
@@ -180,10 +190,10 @@ export default function FollowUps() {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Follow-up Info</p>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { icon: Calendar, label: 'Date',        value: selected.f.date },
-                  { icon: Clock,    label: 'Time',        value: selected.f.time || '—' },
-                  { icon: User,     label: 'Assigned To', value: selected.f.assignedTo || '—' },
-                  { icon: Tag,      label: 'Priority',    value: selected.f.priority || '—' },
+                  { icon: Calendar, label: 'Date',        value: selectedFollowUp.f.date },
+                  { icon: Clock,    label: 'Time',        value: selectedFollowUp.f.time || '—' },
+                  { icon: User,     label: 'Assigned To', value: selectedFollowUp.f.assignedTo || '—' },
+                  { icon: Tag,      label: 'Priority',    value: selectedFollowUp.f.priority || '—' },
                 ].map(({ icon: Icon, label, value }) => (
                   <div key={label} className="flex items-center gap-2">
                     <Icon size={13} className="text-gray-400 flex-shrink-0" />
@@ -198,23 +208,23 @@ export default function FollowUps() {
 
             <div className="bg-blue-50 rounded-2xl p-4">
               <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide mb-3">Lead Details</p>
-              {selected.linkedLead ? (
+              {selectedFollowUp.linkedLead ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                      {selected.linkedLead.name?.charAt(0)}
+                      {selectedFollowUp.linkedLead.name?.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-800">{selected.linkedLead.name}</p>
-                      <p className="text-xs text-gray-500">{selected.linkedLead.company}</p>
+                      <p className="font-semibold text-gray-800">{selectedFollowUp.linkedLead.name}</p>
+                      <p className="text-xs text-gray-500">{selectedFollowUp.linkedLead.company}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { icon: Phone,     label: 'Phone',  value: selected.linkedLead.phone },
-                      { icon: Mail,      label: 'Email',  value: selected.linkedLead.email },
-                      { icon: Tag,       label: 'Status', value: selected.linkedLead.status },
-                      { icon: Building2, label: 'Source', value: selected.linkedLead.source },
+                      { icon: Phone,     label: 'Phone',  value: selectedFollowUp.linkedLead.phone },
+                      { icon: Mail,      label: 'Email',  value: selectedFollowUp.linkedLead.email },
+                      { icon: Tag,       label: 'Status', value: selectedFollowUp.linkedLead.status },
+                      { icon: Building2, label: 'Source', value: selectedFollowUp.linkedLead.source },
                     ].filter(i => i.value).map(({ icon: Icon, label, value }) => (
                       <div key={label} className="flex items-center gap-1.5">
                         <Icon size={12} className="text-blue-400 flex-shrink-0" />
@@ -228,30 +238,30 @@ export default function FollowUps() {
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">{selected.f.lead}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{selected.f.company || '—'}</p>
+                  <p className="text-sm font-semibold text-gray-800">{selectedFollowUp.f.lead}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{selectedFollowUp.f.company || '—'}</p>
                 </div>
               )}
             </div>
 
             <div className="flex justify-between gap-2 pt-2">
               <button
-                onClick={() => { toggleDone(selected.f); setSelected(null); }}
+                onClick={() => { toggleDone(selectedFollowUp.f); closeDetail(); }}
                 className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                  selected.f.status === 'Done'
+                  selectedFollowUp.f.status === 'Done'
                     ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                     : 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'
                 }`}>
                 <CheckCircle size={14} />
-                {selected.f.status === 'Done' ? 'Mark Pending' : 'Mark Done'}
+                {selectedFollowUp.f.status === 'Done' ? 'Mark Pending' : 'Mark Done'}
               </button>
               <div className="flex gap-2">
-                {selected.linkedLead && (
-                  <SecondaryButton onClick={() => { setSelected(null); navigate(`/leads/${selected.linkedLead._id || selected.linkedLead.id}`); }}>
+                {selectedFollowUp.linkedLead && (
+                  <SecondaryButton onClick={() => { closeDetail(); navigate(`/leads/${selectedFollowUp.linkedLead._id || selectedFollowUp.linkedLead.id}`); }}>
                     View Lead <ArrowRight size={14} />
                   </SecondaryButton>
                 )}
-                <PrimaryButton onClick={() => openEdit(selected.f)}>
+                <PrimaryButton onClick={() => openEdit(selectedFollowUp.f)}>
                   <Edit2 size={14} /> Edit
                 </PrimaryButton>
               </div>
