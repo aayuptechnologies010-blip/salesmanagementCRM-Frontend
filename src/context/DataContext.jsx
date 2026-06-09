@@ -13,34 +13,34 @@ export function DataProvider({ children }) {
 
   // Fetch all data from backend when user is authenticated
   useEffect(() => {
+    if (!currentUser) {
+      setLeads([]);
+      setFollowUps([]);
+      setActivities([]);
+      setLoading(false);
+      return;
+    }
     const fetchData = async () => {
-      if (!currentUser) {
-        setLeads([]);
-        setFollowUps([]);
-        setActivities([]);
-        setLoading(false);
-        return;
-      }
       try {
         setLoading(true);
-        
-        // Fetch dashboard statistics or list APIs
-        const [leadsData, followUpsData, activitiesData] = await Promise.all([
-          api.get('/leads?t=' + Date.now()),
+        // Leads + followups first (critical), activities lazy
+        const [leadsData, followUpsData] = await Promise.all([
+          api.get('/leads'),
           api.get('/followups'),
-          api.get('/activities'),
         ]);
-
         setLeads(leadsData.leads || []);
         setFollowUps(followUpsData || []);
-        setActivities(activitiesData || []);
       } catch (err) {
-        console.error('Failed to fetch data from backend:', err.message);
+        console.error('Failed to fetch data:', err.message);
       } finally {
         setLoading(false);
       }
+      // Activities load in background after critical data
+      try {
+        const activitiesData = await api.get('/activities');
+        setActivities(activitiesData || []);
+      } catch (_) {}
     };
-
     fetchData();
   }, [currentUser]);
 
@@ -85,22 +85,12 @@ export function DataProvider({ children }) {
   const addLead = async (data, userName = 'Admin') => {
     const newLead = await api.post('/leads', data);
     setLeads(prev => [newLead, ...prev]);
-    
-    // Refresh activities
-    const activitiesData = await api.get('/activities');
-    setActivities(activitiesData);
-    
     return getMappedItem(newLead);
   };
 
   const updateLead = async (id, data, userName = 'Admin') => {
     const updatedLead = await api.patch(`/leads/${id}`, data);
     setLeads(prev => prev.map(l => (l._id === id || l.id === id) ? updatedLead : l));
-    
-    // Refresh activities
-    const activitiesData = await api.get('/activities');
-    setActivities(activitiesData);
-
     return getMappedItem(updatedLead);
   };
 
@@ -111,7 +101,7 @@ export function DataProvider({ children }) {
 
   // Refresh all leads from backend (used after import)
   const refreshLeads = async () => {
-    const leadsData = await api.get('/leads?t=' + Date.now());
+    const leadsData = await api.get('/leads');
     setLeads(leadsData.leads || []);
   };
 
@@ -139,25 +129,16 @@ export function DataProvider({ children }) {
       }
       return l;
     }));
-    
-    // Refresh activities & followups
-    const [activitiesData, followUpsData] = await Promise.all([
-      api.get('/activities'),
-      api.get('/followups')
-    ]);
-    setActivities(activitiesData);
-    setFollowUps(followUpsData || []);
+    if (followUpDate) {
+      const followUpsData = await api.get('/followups');
+      setFollowUps(followUpsData || []);
+    }
   };
 
   // ── Follow-ups ──
   const addFollowUp = async (data, userName = 'Admin') => {
     const newFU = await api.post('/followups', data);
     setFollowUps(prev => [newFU, ...prev]);
-    
-    // Refresh activities
-    const activitiesData = await api.get('/activities');
-    setActivities(activitiesData);
-
     return getMappedItem(newFU);
   };
 

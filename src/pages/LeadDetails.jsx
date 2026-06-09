@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, Mail, Building2, Globe, Calendar, Edit2, Plus, CheckCircle, Clock, MessageCircle, DollarSign, User, Tag, Trash2 } from 'lucide-react';
 import Card from '../components/shared/Card';
@@ -7,6 +7,7 @@ import { Input, Select, PrimaryButton, SecondaryButton, GhostButton, IconButton 
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import CallPanel from '../components/shared/CallPanel';
+import { api } from '../utils/api';
 
 const statusOptions = ['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'];
 
@@ -29,16 +30,21 @@ export default function LeadDetails() {
   // id from URL can be _id (mongo string) or numeric id
   const lead = leads.find(l => String(l._id || l.id) === String(id) || String(l.id) === String(id));
 
-  const [status, setStatus]     = useState(lead?.status || 'New');
-  const [note, setNote]         = useState('');
-  const [notes, setNotes]       = useState(() => {
-    try { return JSON.parse(localStorage.getItem(`crm_notes_${id}`)) || []; } catch { return []; }
-  });
-  const [fuDate, setFuDate]     = useState(lead?.followUpDate || '');
-  const [fuTime, setFuTime]     = useState('10:00');
-  const [fuAssign, setFuAssign] = useState('');
+  const [status, setStatus]       = useState(lead?.status || 'New');
+  const [note, setNote]           = useState('');
+  const [notes, setNotes]         = useState(lead?.notes || []);
+  const [fuDate, setFuDate]       = useState(lead?.followUpDate || '');
+  const [fuTime, setFuTime]       = useState('10:00');
+  const [fuAssign, setFuAssign]   = useState('');
   const [scheduled, setScheduled] = useState(false);
-  const [callOpen, setCallOpen] = useState(false);
+  const [callOpen, setCallOpen]   = useState(false);
+  const [leadActivities, setLeadActivities] = useState([]);
+
+  useEffect(() => {
+    api.get(`/activities?lead=${encodeURIComponent(lead?.name || '')}&limit=20`)
+      .then(data => setLeadActivities(data || []))
+      .catch(() => {});
+  }, [lead?.name]);
 
   if (!lead) return (
     <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -50,23 +56,30 @@ export default function LeadDetails() {
     </div>
   );
 
-  const handleStatusChange = (s) => {
+  const handleStatusChange = async (s) => {
     setStatus(s);
-    updateLead(lead.id, { ...lead, status: s }, currentUser?.name);
+    await updateLead(lead._id || lead.id, { status: s }, currentUser?.name);
+    const data = await api.get(`/activities?lead=${encodeURIComponent(lead.name)}&limit=20`);
+    setLeadActivities(data || []);
   };
 
-  const addNote = () => {
+  const addNote = async () => {
     if (!note.trim()) return;
-    const updated = [{ text: note, time: new Date().toLocaleString() }, ...notes];
-    setNotes(updated);
-    localStorage.setItem(`crm_notes_${id}`, JSON.stringify(updated));
-    setNote('');
+    try {
+      const updatedNotes = await api.patch(`/leads/${lead._id || lead.id}/notes`, { text: note });
+      setNotes(updatedNotes);
+      setNote('');
+      // Refresh activities
+      const data = await api.get(`/activities?lead=${encodeURIComponent(lead.name)}&limit=20`);
+      setLeadActivities(data || []);
+    } catch (err) {
+      alert(err.message || 'Failed to save note');
+    }
   };
 
-  const deleteNote = (i) => {
+  const deleteNote = async (i) => {
     const updated = notes.filter((_, idx) => idx !== i);
     setNotes(updated);
-    localStorage.setItem(`crm_notes_${id}`, JSON.stringify(updated));
   };
 
   const handleSchedule = () => {
@@ -80,11 +93,8 @@ export default function LeadDetails() {
     setTimeout(() => setScheduled(false), 2500);
   };
 
-  const timeline = [
-    { id: 1, text: `Status changed to "${status}"`, user: 'You', time: 'Just now', icon: Tag, color: 'bg-blue-600' },
-    { id: 2, text: `Assigned to ${lead.assignedTo || 'Unassigned'}`, user: 'Admin', time: lead.createdAt, icon: User, color: 'bg-purple-500' },
-    { id: 3, text: `Lead created via ${lead.source}`, user: 'System', time: lead.createdAt, icon: Globe, color: 'bg-gray-400' },
-  ];
+  const typeIcon = { edit: Tag, followup: Clock, add: Plus, assign: User };
+  const typeColor = { edit: 'bg-blue-500', followup: 'bg-orange-400', add: 'bg-green-500', assign: 'bg-purple-500' };
 
   const cfg = statusConfig[status] || statusConfig.New;
 
@@ -282,17 +292,24 @@ export default function LeadDetails() {
             <div className="relative">
               <div className="absolute left-[15px] top-2 bottom-2 w-px bg-gray-100" />
               <div className="space-y-5">
-                {timeline.map((item) => (
-                  <div key={item.id} className="flex gap-4 relative">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 shadow-sm ${item.color}`}>
-                      <item.icon size={13} className="text-white" />
+                {leadActivities.length === 0 && (
+                  <p className="text-sm text-gray-400 text-center py-4 ml-4">No activity yet</p>
+                )}
+                {leadActivities.map((item) => {
+                  const Icon  = typeIcon[item.type]  || Tag;
+                  const color = typeColor[item.type] || 'bg-gray-400';
+                  return (
+                    <div key={item._id || item.id} className="flex gap-4 relative">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 shadow-sm ${color}`}>
+                        <Icon size={13} className="text-white" />
+                      </div>
+                      <div className="flex-1 pt-1">
+                        <p className="text-sm font-medium text-gray-800">{item.action}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{item.user} · {item.time}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 pt-1">
-                      <p className="text-sm font-medium text-gray-800">{item.text}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{item.user} · {item.time}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </Card>
