@@ -46,6 +46,7 @@ export default function Leads() {
   const leads = getLeadsForUser(currentUser);
   const isSalesExec = currentUser?.role === 'Sales Executive';
   const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
+  const isSuperAdmin = currentUser?.role === 'Super Admin';
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -125,7 +126,7 @@ export default function Leads() {
         ? <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100"><Calendar size={12} />{v}</span>
         : <button onClick={() => navigate(`/leads/${row.id}`)} className="text-xs text-blue-500 hover:underline">+ Schedule</button>
     },
-    ...(isAdmin ? [{
+    ...(isSuperAdmin ? [{
       key: 'id', label: '', render: (_, row) => (
         <button onClick={() => openEdit(row)} className="text-xs text-blue-500 hover:text-blue-600 font-medium">Edit</button>
       )
