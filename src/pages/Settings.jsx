@@ -4,11 +4,34 @@ import Card from '../components/shared/Card';
 import { Input, Select, PrimaryButton, SecondaryButton } from '../components/shared/FormElements';
 import { useAuth } from '../context/AuthContext';
 
-const tabs = [
-  { id: 'company', label: 'Company Profile', icon: Building2 },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'permissions', label: 'Role Permissions', icon: Shield },
+const allTabs = [
+  { id: 'company', label: 'Company Profile', icon: Building2, roles: ['Super Admin', 'Admin', 'Sales Executive'] },
+  { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['Super Admin', 'Admin', 'Sales Executive'] },
+  { id: 'permissions', label: 'Role Permissions', icon: Shield, roles: ['Super Admin'] },
 ];
+
+// Notifications per role
+const notifsByRole = {
+  'Super Admin': [
+    { key: 'newLead', label: 'New Lead Created', desc: 'Get notified when a new lead is added' },
+    { key: 'assignment', label: 'Lead Assignment', desc: 'Notify when a lead is assigned' },
+    { key: 'followup', label: 'Follow-up Reminders', desc: 'Reminders before scheduled follow-ups' },
+    { key: 'conversion', label: 'Lead Conversion', desc: 'Notify when a lead is marked as Won' },
+    { key: 'weeklyReport', label: 'Weekly Report', desc: 'Receive weekly performance summary' },
+  ],
+  'Admin': [
+    { key: 'newLead', label: 'New Lead Created', desc: 'Get notified when a new lead is added' },
+    { key: 'assignment', label: 'Lead Assignment', desc: 'Notify when a lead is assigned' },
+    { key: 'followup', label: 'Follow-up Reminders', desc: 'Reminders before scheduled follow-ups' },
+    { key: 'conversion', label: 'Lead Conversion', desc: 'Notify when a lead is marked as Won' },
+    { key: 'weeklyReport', label: 'Weekly Report', desc: 'Receive weekly performance summary' },
+  ],
+  'Sales Executive': [
+    { key: 'assignment', label: 'Lead Assigned to Me', desc: 'Notify when a lead is assigned to you' },
+    { key: 'followup', label: 'Follow-up Reminders', desc: 'Reminders before your scheduled follow-ups' },
+    { key: 'conversion', label: 'Lead Conversion', desc: 'Notify when your lead is marked as Won' },
+  ],
+};
 
 const roles = ['Super Admin', 'Admin / Sales Manager', 'Sales Executive'];
 const permissions = [
@@ -23,6 +46,8 @@ const defaultPerms = {
 
 export default function Settings() {
   const { currentUser, updateProfile } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'Super Admin';
+  const tabs = allTabs.filter(t => t.roles.includes(currentUser?.role));
   const [tab, setTab] = useState('company');
   const [editMode, setEditMode] = useState(false);
   const [perms, setPerms] = useState(defaultPerms);
@@ -194,15 +219,10 @@ export default function Settings() {
       {/* Notifications */}
       {tab === 'notifications' && (
         <Card className="p-6 max-w-2xl">
-          <h3 className="font-semibold text-gray-800 mb-5">Notification Preferences</h3>
+          <h3 className="font-semibold text-gray-800 mb-1">Notification Preferences</h3>
+          <p className="text-xs text-gray-400 mb-5">Manage notifications for <span className="font-semibold text-blue-600">{currentUser?.name}</span></p>
           <div className="space-y-4">
-            {[
-              { key: 'newLead', label: 'New Lead Created', desc: 'Get notified when a new lead is added' },
-              { key: 'assignment', label: 'Lead Assignment', desc: 'Notify when a lead is assigned to you' },
-              { key: 'followup', label: 'Follow-up Reminders', desc: 'Reminders before scheduled follow-ups' },
-              { key: 'conversion', label: 'Lead Conversion', desc: 'Notify when a lead is marked as Won' },
-              { key: 'weeklyReport', label: 'Weekly Report', desc: 'Receive weekly performance summary' },
-            ].map(({ key, label, desc }) => (
+            {(notifsByRole[currentUser?.role] || notifsByRole['Sales Executive']).map(({ key, label, desc }) => (
               <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                 <div>
                   <p className="text-sm font-medium text-gray-800">{label}</p>

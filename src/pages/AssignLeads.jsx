@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shuffle, UserCheck, Users, Search, Phone } from 'lucide-react';
+import { Shuffle, UserCheck, Users, Search, Phone, ChevronDown, ChevronUp } from 'lucide-react';
 import Card from '../components/shared/Card';
 import DataTable from '../components/shared/DataTable';
 import StatusBadge from '../components/shared/StatusBadge';
@@ -9,7 +9,128 @@ import { Select, PrimaryButton, SecondaryButton, BadgeButton } from '../componen
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 
-export default function AssignLeads() {
+function TeamWorkload({ leads, teamMembers, onReassign }) {
+  const [expanded, setExpanded] = useState(null);
+  const [memberLeadSearch, setMemberLeadSearch] = useState('');
+
+  const toggle = (name) => {
+    setExpanded(prev => prev === name ? null : name);
+    setMemberLeadSearch('');
+  };
+
+  return (
+    <Card className="p-5">
+      <h3 className="font-semibold text-gray-800 mb-4">Team Workload — Click member to see their leads</h3>
+      <div className="space-y-2">
+        {teamMembers.map(m => {
+          const memberLeads = leads.filter(l => l.assignedTo === m.name);
+          const count = memberLeads.length;
+          const pct = leads.length > 0 ? Math.round((count / leads.length) * 100) : 0;
+          const isOpen = expanded === m.name;
+
+          const filtered = memberLeads.filter(l => {
+            const s = memberLeadSearch.toLowerCase();
+            return !s || (l.name || '').toLowerCase().includes(s) || (l.company || '').toLowerCase().includes(s);
+          });
+
+          return (
+            <div key={m.id} className="border border-gray-100 rounded-2xl overflow-hidden">
+              {/* Member Row */}
+              <button
+                onClick={() => toggle(m.name)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+              >
+                <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600 flex-shrink-0">
+                  {m.avatar || m.name.charAt(0)}
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm font-semibold text-gray-700">{m.name}</span>
+                    <span className="text-xs font-semibold text-blue-600">{count} leads</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+                <div className="ml-2 text-gray-400">
+                  {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+              </button>
+
+              {/* Expanded Leads */}
+              {isOpen && (
+                <div className="border-t border-gray-100 bg-gray-50/50">
+                  {/* Search inside member leads */}
+                  {count > 5 && (
+                    <div className="px-4 pt-3">
+                      <div className="relative">
+                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          value={memberLeadSearch}
+                          onChange={e => setMemberLeadSearch(e.target.value)}
+                          placeholder={`Search ${m.name}'s leads...`}
+                          className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {count === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-4">No leads assigned</p>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-100">
+                          <tr>
+                            <th className="px-4 py-2 text-left font-semibold text-gray-500">Name</th>
+                            <th className="px-3 py-2 text-left font-semibold text-gray-500">Company</th>
+                            <th className="px-3 py-2 text-left font-semibold text-gray-500">Status</th>
+                            <th className="px-3 py-2 text-left font-semibold text-gray-500">Type</th>
+                            <th className="px-3 py-2 text-left font-semibold text-gray-500">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {filtered.map(lead => (
+                            <tr key={lead.id} className="hover:bg-white transition-colors">
+                              <td className="px-4 py-2 font-medium text-gray-800">{lead.name}</td>
+                              <td className="px-3 py-2 text-gray-500">{lead.company || '—'}</td>
+                              <td className="px-3 py-2">
+                                <StatusBadge status={lead.status} />
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                  lead.leadType === 'Student Training' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+                                }`}>{lead.leadType || 'Client Project'}</span>
+                              </td>
+                              <td className="px-3 py-2">
+                                <button
+                                  onClick={() => onReassign(lead)}
+                                  className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-all"
+                                >
+                                  Reassign
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {filtered.length === 0 && (
+                        <p className="text-xs text-gray-400 text-center py-3">No results found</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {teamMembers.length === 0 && (
+          <p className="text-sm text-gray-400 text-center py-4">No team members added yet.</p>
+        )}
+      </div>
+    </Card>
+  );
+}
   const { leads, assignLead } = useData();
   const { teamMembers, currentUser } = useAuth();
 
@@ -34,7 +155,7 @@ export default function AssignLeads() {
 
   // Filter states
   const [search, setSearch] = useState('');
-  const [filterAssignment, setFilterAssignment] = useState('All');
+  const [filterAssignment, setFilterAssignment] = useState('Unassigned');
   const [filterSource, setFilterSource] = useState('');
   const [filterLeadType, setFilterLeadType] = useState('');
 
@@ -213,32 +334,7 @@ export default function AssignLeads() {
       </Card>
 
       {/* Team Workload */}
-      <Card className="p-5">
-        <h3 className="font-semibold text-gray-800 mb-4">Team Workload</h3>
-        <div className="space-y-3">
-          {teamMembers.map(m => {
-            const count = leads.filter(l => l.assignedTo === m.name).length;
-            const pct = leads.length > 0 ? Math.round((count / leads.length) * 100) : 0;
-            return (
-              <div key={m.id} className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600 flex-shrink-0">{m.avatar}</div>
-                <div className="flex-1">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700">{m.name}</span>
-                    <span className="text-xs text-gray-400">{count} leads</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {teamMembers.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-4">No team members added yet.</p>
-          )}
-        </div>
-      </Card>
+      <TeamWorkload leads={leads} teamMembers={teamMembers} onReassign={(lead) => { setSelected([lead.id]); setAssignTo(''); setModal('single'); }} />
 
       {/* Single / Bulk Assign Modal */}
       <Modal isOpen={modal === 'single' || modal === 'bulk'} onClose={() => { setModal(null); setMemberSearch(''); }}
