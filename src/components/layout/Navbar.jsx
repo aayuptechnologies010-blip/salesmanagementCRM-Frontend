@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Search, Bell, ChevronDown, LogOut, User, Settings } from 'lucide-react';
+import { Menu, Search, Bell, ChevronDown, LogOut, User, Settings, CheckCheck, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 
@@ -25,9 +25,24 @@ export default function Navbar({ onMenuClick, pageTitle }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
-  const { activities } = useData();
+  const { getActivitiesForUser } = useData();
 
-  const recentActivities = activities.slice(0, 8);
+  const allActivities = getActivitiesForUser(currentUser).slice(0, 20);
+  const [readIds, setReadIds] = useState([]);
+  const [cleared, setCleared] = useState(false);
+
+  const visibleActivities = cleared ? [] : allActivities;
+  const unreadCount = visibleActivities.filter(a => !readIds.includes(a.id)).length;
+
+  const markAllRead = () => setReadIds(visibleActivities.map(a => a.id));
+  const clearAll = () => { setCleared(true); setReadIds([]); };
+
+  // Reset cleared state when new activities come in
+  const handleBellClick = () => {
+    if (cleared && allActivities.length > 0) setCleared(false);
+    setNotifOpen(o => !o);
+    setProfileOpen(false);
+  };
 
   const getNotifRoute = (type) => {
     if (type === 'followup') return '/followups';
@@ -66,29 +81,53 @@ export default function Navbar({ onMenuClick, pageTitle }) {
       <div className="flex items-center gap-2">
         {/* Notifications */}
         <div className="relative">
-          <button onClick={() => { setNotifOpen(o => !o); setProfileOpen(false); }}
+          <button onClick={handleBellClick}
             className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors">
             <Bell size={20} className="text-gray-600" />
-            {recentActivities.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-blue-500 rounded-full flex items-center justify-center text-[9px] text-white font-bold px-0.5">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
             )}
           </button>
           {notifOpen && (
             <div className="absolute right-0 top-12 w-80 bg-white border border-gray-200 rounded-2xl shadow-lg z-50">
-              <div className="px-4 py-3 border-b border-gray-100">
-                <span className="font-semibold text-gray-800 text-sm">Recent Activity</span>
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <span className="font-semibold text-gray-800 text-sm">Notifications</span>
+                <div className="flex items-center gap-1">
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead}
+                      className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors">
+                      <CheckCheck size={12} /> Mark all read
+                    </button>
+                  )}
+                  {visibleActivities.length > 0 && (
+                    <button onClick={clearAll}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">
+                      <Trash2 size={12} /> Clear
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
-                {recentActivities.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-sm text-gray-400">No recent activity</div>
+                {visibleActivities.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-sm text-gray-400">No notifications</div>
                 ) : (
-                  recentActivities.map(n => (
-                    <div key={n.id} onClick={() => handleNotifClick(n)}
-                      className="px-4 py-3 hover:bg-blue-50 transition-colors cursor-pointer">
-                      <p className="text-sm text-gray-700">{n.action}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{n.lead} &middot; {n.time}</p>
-                    </div>
-                  ))
+                  visibleActivities.map(n => {
+                    const isRead = readIds.includes(n.id);
+                    return (
+                      <div key={n.id} onClick={() => { handleNotifClick(n); setReadIds(p => [...p, n.id]); }}
+                        className={`px-4 py-3 hover:bg-blue-50 transition-colors cursor-pointer flex items-start gap-2 ${
+                          isRead ? 'opacity-50' : ''
+                        }`}>
+                        {!isRead && <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />}
+                        <div className={!isRead ? '' : 'ml-3.5'}>
+                          <p className="text-sm text-gray-700">{n.action}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{n.lead} &middot; {n.time}</p>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
