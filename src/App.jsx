@@ -20,26 +20,23 @@ import Invoices from './pages/Invoices';
 import InvoiceDetail from './pages/InvoiceDetail';
 
 function LoginApprovalNotification() {
-  const { currentUser } = useAuth();
-  const [request, setRequest] = useState(null); // { email, requestSocketId }
+  const { currentUser, logout } = useAuth();
+  const [request, setRequest] = useState(null);
 
   useEffect(() => {
     if (!currentUser) return;
 
+    // re-register on every reconnect (handles initial connect too)
     const registerSocket = () => socket.emit('register', currentUser.email);
-
-    if (socket.connected) {
-      registerSocket();
-    } else {
-      socket.once('connect', registerSocket);
-      socket.connect();
-    }
-    socket.on('connect', registerSocket); // re-register on every reconnect
+    if (socket.connected) registerSocket();
+    socket.on('connect', registerSocket);
 
     const onLoginRequest = ({ email, requestSocketId }) => {
-      setRequest({ email, requestSocketId });
+      setRequest(prev => prev ? prev : { email, requestSocketId }); // prevent double popup
     };
     socket.on('login_request', onLoginRequest);
+
+    if (!socket.connected) socket.connect();
 
     return () => {
       socket.off('connect', registerSocket);
@@ -52,6 +49,7 @@ function LoginApprovalNotification() {
   const approve = () => {
     socket.emit('login_approve', { email: request.email, requestSocketId: request.requestSocketId });
     setRequest(null);
+    logout(); // Device A logout ho jaye
   };
   const reject = () => {
     socket.emit('login_reject', { email: request.email, requestSocketId: request.requestSocketId });
