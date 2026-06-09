@@ -10,11 +10,7 @@ export function DataProvider({ children }) {
   const [followUps, setFollowUps] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [leadsTotal, setLeadsTotal] = useState(0);
-  const [leadsPage, setLeadsPage] = useState(1);
-  const LEADS_LIMIT = 100;
 
-  // Fetch all data from backend when user is authenticated
   useEffect(() => {
     if (!currentUser) {
       setLeads([]);
@@ -26,21 +22,18 @@ export function DataProvider({ children }) {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Leads + followups first (critical), activities lazy
         const [leadsData, followUpsData] = await Promise.all([
-          api.get(`/leads?limit=${LEADS_LIMIT}&page=1`),
+          api.get('/leads'),
           api.get('/followups'),
         ]);
         setLeads(leadsData.leads || []);
-        setLeadsTotal(leadsData.total || 0);
-        setLeadsPage(1);
         setFollowUps(followUpsData || []);
       } catch (err) {
         console.error('Failed to fetch data:', err.message);
       } finally {
         setLoading(false);
       }
-      // Activities load in background after critical data
+      // Activities load in background — non-blocking
       try {
         const activitiesData = await api.get('/activities');
         setActivities(activitiesData || []);
@@ -49,16 +42,12 @@ export function DataProvider({ children }) {
     fetchData();
   }, [currentUser]);
 
-  // Helper to map DB _id to frontend id
   const cleanPhone = (p) => {
     if (!p) return '';
     const str = String(p).trim();
-    // Pure numeric already
     if (/^\d{7,15}$/.test(str)) return str.slice(0, 15);
-    // Extract Mob: number from complex strings
     const mob = str.match(/[Mm]ob(?:ile)?\s*:?\s*(\d{7,15})/);
     if (mob) return mob[1].slice(0, 15);
-    // Extract any 10-digit sequence
     const digits = str.replace(/\D/g, '');
     const match = digits.match(/[6-9]\d{9}/);
     if (match) return match[0];
@@ -76,11 +65,9 @@ export function DataProvider({ children }) {
     };
   };
 
-  const isValidPhone = (p) => /^\d{7,15}$/.test((p || '').trim());
-
   const mappedLeads = leads.map(getMappedItem).sort((a, b) => {
-    const aHas = isValidPhone(a.phone) ? 1 : 0;
-    const bHas = isValidPhone(b.phone) ? 1 : 0;
+    const aHas = a.phone && a.phone.length >= 7 ? 1 : 0;
+    const bHas = b.phone && b.phone.length >= 7 ? 1 : 0;
     return bHas - aHas;
   });
   const mappedFollowUps = followUps.map(getMappedItem);
@@ -95,7 +82,10 @@ export function DataProvider({ children }) {
 
   const updateLead = async (id, data, userName = 'Admin') => {
     const updatedLead = await api.patch(`/leads/${id}`, data);
-    setLeads(prev => prev.map(l => (l._id === id || l.id === id) ? updatedLead : l));
+    setLeads(prev => prev.map(l => {
+      if (l._id === id || l.id === id) return { ...l, ...updatedLead };
+      return l;
+    }));
     return getMappedItem(updatedLead);
   };
 
@@ -104,39 +94,17 @@ export function DataProvider({ children }) {
     setLeads(prev => prev.filter(l => !ids.includes(l._id) && !ids.includes(l.id)));
   };
 
-  // Refresh all leads from backend (used after import)
   const refreshLeads = async () => {
-    const leadsData = await api.get(`/leads?limit=${LEADS_LIMIT}&page=1`);
+    const leadsData = await api.get('/leads');
     setLeads(leadsData.leads || []);
-    setLeadsTotal(leadsData.total || 0);
-    setLeadsPage(1);
   };
 
-  // Fetch a specific page of leads
-  const fetchLeadsPage = async (page, search = '', status = '', leadType = '') => {
-    setLoading(true);
-    try {
-      let url = `/leads?limit=${LEADS_LIMIT}&page=${page}`;
-      if (search)   url += `&search=${encodeURIComponent(search)}`;
-      if (status)   url += `&status=${encodeURIComponent(status)}`;
-      if (leadType) url += `&leadType=${encodeURIComponent(leadType)}`;
-      const leadsData = await api.get(url);
-      setLeads(leadsData.leads || []);
-      setLeadsTotal(leadsData.total || 0);
-      setLeadsPage(page);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Upload CSV for preview — returns { totalRows, previewRows, detectedColumns, filePath }
   const importLeadsPreview = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
     return api.postForm('/leads/import/preview', formData);
   };
 
-  // Confirm import using temp filename from preview
   const importLeadsConfirm = async (filename) => {
     const result = await api.post('/leads/import/confirm', { filename });
     await refreshLeads();
@@ -198,13 +166,12 @@ export function DataProvider({ children }) {
 
   return (
     <DataContext.Provider value={{
-      leads: mappedLeads, 
-      followUps: mappedFollowUps, 
+      leads: mappedLeads,
+      followUps: mappedFollowUps,
       activities: mappedActivities,
-      leadsTotal, leadsPage, leadsLimit: LEADS_LIMIT,
       getLeadsForUser, getFollowUpsForUser, getActivitiesForUser,
       addLead, updateLead, deleteLead, assignLead,
-      importLeadsPreview, importLeadsConfirm, refreshLeads, fetchLeadsPage,
+      importLeadsPreview, importLeadsConfirm, refreshLeads,
       addFollowUp, updateFollowUp, deleteFollowUp,
       loading
     }}>

@@ -9,7 +9,7 @@ import { Select, PrimaryButton, SecondaryButton, BadgeButton } from '../componen
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 
-function TeamWorkload({ leads, teamMembers, onReassign }) {
+function TeamWorkload({ leads, teamMembers }) {
   const [expanded, setExpanded] = useState(null);
   const [memberLeadSearch, setMemberLeadSearch] = useState('');
 
@@ -86,7 +86,6 @@ function TeamWorkload({ leads, teamMembers, onReassign }) {
                             <th className="px-3 py-2 text-left font-semibold text-gray-500">Company</th>
                             <th className="px-3 py-2 text-left font-semibold text-gray-500">Status</th>
                             <th className="px-3 py-2 text-left font-semibold text-gray-500">Type</th>
-                            <th className="px-3 py-2 text-left font-semibold text-gray-500">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -102,14 +101,7 @@ function TeamWorkload({ leads, teamMembers, onReassign }) {
                                   lead.leadType === 'Student Training' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
                                 }`}>{lead.leadType || 'Client Project'}</span>
                               </td>
-                              <td className="px-3 py-2">
-                                <button
-                                  onClick={() => onReassign(lead)}
-                                  className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-all"
-                                >
-                                  Reassign
-                                </button>
-                              </td>
+
                             </tr>
                           ))}
                         </tbody>
@@ -162,6 +154,7 @@ export default function AssignLeads() {
   const [filterLeadType, setFilterLeadType] = useState('');
 
   const unassigned = leads.filter(l => !l.assignedTo);
+  const isAlreadyAssigned = (lead) => !!lead.assignedTo;
   const filteredMembers = teamMembers.filter(m =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
     (m.role && m.role.toLowerCase().includes(memberSearch.toLowerCase()))
@@ -232,12 +225,16 @@ export default function AssignLeads() {
     {
       key: 'id', label: 'Actions', render: (_, row) => (
         <div className="flex items-center gap-1.5">
-          <BadgeButton
-            color={row.assignedTo ? 'gray' : 'blue'}
-            onClick={() => { setSelected([row.id]); setAssignTo(''); setModal('single'); }}
-          >
-            {row.assignedTo ? 'Reassign' : 'Assign'}
-          </BadgeButton>
+          {row.assignedTo ? (
+            <span className="text-xs text-gray-400 italic px-2 py-1 bg-gray-50 rounded-lg border border-gray-200">Assigned</span>
+          ) : (
+            <BadgeButton
+              color="blue"
+              onClick={() => { setSelected([row.id]); setAssignTo(''); setModal('single'); }}
+            >
+              Assign
+            </BadgeButton>
+          )}
           {row.phone && (
             <button
               onClick={() => setCallLead(row)}
@@ -332,11 +329,11 @@ export default function AssignLeads() {
           </div>
         </div>
 
-        <DataTable columns={columns} data={filteredLeads} selectable onSelectionChange={setSelected} />
+        <DataTable columns={columns} data={filteredLeads} selectable disabledRows={leads.filter(l => l.assignedTo).map(l => l.id)} onSelectionChange={setSelected} />
       </Card>
 
       {/* Team Workload */}
-      <TeamWorkload leads={leads} teamMembers={teamMembers} onReassign={(lead) => { setSelected([lead.id]); setAssignTo(''); setModal('single'); }} />
+      <TeamWorkload leads={leads} teamMembers={teamMembers} />
 
       {/* Single / Bulk Assign Modal */}
       <Modal isOpen={modal === 'single' || modal === 'bulk'} onClose={() => { setModal(null); setMemberSearch(''); }}

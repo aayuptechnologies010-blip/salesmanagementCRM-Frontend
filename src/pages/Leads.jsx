@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Upload, Plus, Trash2, UserCheck, Calendar, Phone } from 'lucide-react';
 import Card from '../components/shared/Card';
@@ -11,62 +11,45 @@ import { useAuth } from '../context/AuthContext';
 import LeadImportModal from '../components/shared/LeadImportModal';
 import CallPanel from '../components/shared/CallPanel';
 
-const emptyForm = { 
-  name: '', 
-  company: '', 
-  phone: '', 
-  email: '', 
-  source: '', 
-  status: 'New', 
-  leadType: 'Client Project', 
-  assignedTo: '', 
-  followUpDate: '',
-  course: '', 
-  branch: '', 
-  college: '', 
-  year: '', 
-  trainingType: '',
-  projectType: '', 
-  techStack: '', 
-  timeline: '',
-  value: '',
-  // Client-specific fields
-  contactPerson: '',
-  pinCode: '',
-  typeOfCare: '',
-  hospitalZone: '',
-  tpaName: '',
+const emptyForm = {
+  name: '', company: '', phone: '', email: '', source: '', status: 'New',
+  leadType: 'Client Project', assignedTo: '', followUpDate: '',
+  course: '', branch: '', college: '', year: '', trainingType: '',
+  projectType: '', techStack: '', timeline: '', value: '',
+  contactPerson: '', pinCode: '', typeOfCare: '', hospitalZone: '', tpaName: '',
 };
 
 export default function Leads() {
   const navigate = useNavigate();
-  const { leads, leadsTotal, leadsPage, leadsLimit, fetchLeadsPage, addLead, updateLead, deleteLead, assignLead, refreshLeads } = useData();
+  const { getLeadsForUser, addLead, updateLead, deleteLead, assignLead } = useData();
   const { teamMembers, currentUser } = useAuth();
 
+  const leads = getLeadsForUser(currentUser);
   const isSalesExec  = currentUser?.role === 'Sales Executive';
   const isAdmin      = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
   const isSuperAdmin = currentUser?.role === 'Super Admin';
 
-  const [search, setSearch]           = useState('');
-  const [filterStatus, setFilterStatus]       = useState('');
-  const [filterLeadType, setFilterLeadType]   = useState('');
-  const [selected, setSelected]       = useState([]);
-  const [modal, setModal]             = useState(null);
-  const [form, setForm]               = useState(emptyForm);
-  const [editId, setEditId]           = useState(null);
-  const [assignTo, setAssignTo]       = useState('');
-  const [importOpen, setImportOpen]   = useState(false);
-  const [callLead, setCallLead]       = useState(null);
+  const [search, setSearch]               = useState('');
+  const [filterStatus, setFilterStatus]   = useState('');
+  const [filterLeadType, setFilterLeadType] = useState('');
+  const [selected, setSelected]           = useState([]);
+  const [modal, setModal]                 = useState(null);
+  const [form, setForm]                   = useState(emptyForm);
+  const [editId, setEditId]               = useState(null);
+  const [assignTo, setAssignTo]           = useState('');
+  const [importOpen, setImportOpen]       = useState(false);
+  const [callLead, setCallLead]           = useState(null);
 
-  // Debounced server fetch on filter/search change
-  useEffect(() => {
-    const t = setTimeout(() => fetchLeadsPage(1, search, filterStatus, filterLeadType), 400);
-    return () => clearTimeout(t);
-  }, [search, filterStatus, filterLeadType]);
+  const filtered = leads.filter(l =>
+    ((l.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (l.company || '').toLowerCase().includes(search.toLowerCase()) ||
+      (l.phone || '').toLowerCase().includes(search.toLowerCase()) ||
+      (l.email || '').toLowerCase().includes(search.toLowerCase())) &&
+    (filterStatus ? l.status === filterStatus : true) &&
+    (filterLeadType ? l.leadType === filterLeadType : true)
+  );
 
-  const handlePageChange = (page) => fetchLeadsPage(page, search, filterStatus, filterLeadType);
-
-  const openAdd = () => { setForm(emptyForm); setEditId(null); setModal('form'); };
+  const openAdd  = () => { setForm(emptyForm); setEditId(null); setModal('form'); };
   const openEdit = (lead) => { setForm({ ...lead }); setEditId(lead.id); setModal('form'); };
 
   const handleSave = () => {
@@ -116,7 +99,6 @@ export default function Leads() {
     { key: 'email', label: 'Email', render: v => <span className="text-gray-500">{v}</span> },
     { key: 'source', label: 'Source' },
     { key: 'status', label: 'Status', render: v => <StatusBadge status={v} /> },
-    // Only show Assigned To column for admin/super admin
     ...(!isSalesExec ? [{ key: 'assignedTo', label: 'Assigned To', render: v => v || <span className="text-gray-400 italic text-xs">Unassigned</span> }] : []),
     {
       key: 'followUpDate', label: 'Follow-up', sortable: true,
@@ -124,7 +106,7 @@ export default function Leads() {
         ? <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100"><Calendar size={12} />{v}</span>
         : <button onClick={() => navigate(`/leads/${row.id}`)} className="text-xs text-blue-500 hover:underline">+ Schedule</button>
     },
-    ...(isSuperAdmin ? [{
+    ...(isAdmin ? [{
       key: 'id', label: '', render: (_, row) => (
         <button onClick={() => openEdit(row)} className="text-xs text-blue-500 hover:text-blue-600 font-medium">Edit</button>
       )
@@ -151,7 +133,6 @@ export default function Leads() {
             <option value="">All Lead Types</option>
             {['Client Project', 'Student Training'].map(t => <option key={t}>{t}</option>)}
           </select>
-          {/* Bulk actions — only for admin roles */}
           {selected.length > 0 && !isSalesExec && (
             <div className="flex gap-2">
               <SecondaryButton onClick={() => setModal('assign')} className="flex items-center gap-1.5">
@@ -164,7 +145,6 @@ export default function Leads() {
             </div>
           )}
         </div>
-        {/* Add/Import — only for admin roles */}
         {!isSalesExec && (
           <div className="flex gap-2">
             <SecondaryButton onClick={() => setImportOpen(true)} className="flex items-center gap-1.5">
@@ -177,7 +157,6 @@ export default function Leads() {
         )}
       </div>
 
-      {/* Role info banner for Sales Executive */}
       {isSalesExec && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 text-sm text-blue-700 flex items-center gap-2">
           <UserCheck size={15} />
@@ -185,24 +164,14 @@ export default function Leads() {
         </div>
       )}
 
-      {/* Table */}
       <Card>
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-700">{leadsTotal.toLocaleString()} Leads</span>
+          <span className="text-sm font-semibold text-gray-700">{filtered.length} Leads</span>
           <div className="flex items-center gap-1.5 text-xs text-gray-400">
             <Filter size={12} /> Filtered
           </div>
         </div>
-        <DataTable
-          columns={columns}
-          data={leads}
-          selectable={!isSalesExec}
-          onSelectionChange={setSelected}
-          serverTotal={leadsTotal}
-          serverPage={leadsPage}
-          serverPageSize={leadsLimit}
-          onPageChange={handlePageChange}
-        />
+        <DataTable columns={columns} data={filtered} selectable={!isSalesExec} onSelectionChange={setSelected} />
       </Card>
 
       {/* Add/Edit Modal */}
@@ -223,7 +192,6 @@ export default function Leads() {
             {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost', 'No Response'].map(s => <option key={s}>{s}</option>)}
           </Select>
 
-          {/* Student Training Specific Fields */}
           {form.leadType === 'Student Training' && (
             <>
               <Input label="Course Name" value={form.course || ''} onChange={e => setForm({ ...form, course: e.target.value })} placeholder="e.g. Full Stack Web Development" />
@@ -240,7 +208,6 @@ export default function Leads() {
             </>
           )}
 
-          {/* Client Project Specific Fields */}
           {(form.leadType === 'Client Project' || !form.leadType) && (
             <>
               <Input label="Company Name" value={form.company || ''} onChange={e => setForm({ ...form, company: e.target.value })} placeholder="Enter company name" />
