@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Upload, Plus, Trash2, UserCheck, Calendar, Phone } from 'lucide-react';
 import Card from '../components/shared/Card';
@@ -40,33 +40,31 @@ const emptyForm = {
 
 export default function Leads() {
   const navigate = useNavigate();
-  const { getLeadsForUser, addLead, updateLead, deleteLead, assignLead } = useData();
+  const { leads, leadsTotal, leadsPage, leadsLimit, fetchLeadsPage, addLead, updateLead, deleteLead, assignLead, refreshLeads } = useData();
   const { teamMembers, currentUser } = useAuth();
 
-  const leads = getLeadsForUser(currentUser);
-  const isSalesExec = currentUser?.role === 'Sales Executive';
-  const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
+  const isSalesExec  = currentUser?.role === 'Sales Executive';
+  const isAdmin      = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
   const isSuperAdmin = currentUser?.role === 'Super Admin';
 
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterLeadType, setFilterLeadType] = useState('');
-  const [selected, setSelected] = useState([]);
-  const [modal, setModal] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [editId, setEditId] = useState(null);
-  const [assignTo, setAssignTo] = useState('');
-  const [importOpen, setImportOpen] = useState(false);
-  const [callLead, setCallLead] = useState(null);
+  const [search, setSearch]           = useState('');
+  const [filterStatus, setFilterStatus]       = useState('');
+  const [filterLeadType, setFilterLeadType]   = useState('');
+  const [selected, setSelected]       = useState([]);
+  const [modal, setModal]             = useState(null);
+  const [form, setForm]               = useState(emptyForm);
+  const [editId, setEditId]           = useState(null);
+  const [assignTo, setAssignTo]       = useState('');
+  const [importOpen, setImportOpen]   = useState(false);
+  const [callLead, setCallLead]       = useState(null);
 
-  const filtered = leads.filter(l =>
-    ((l.name || '').toLowerCase().includes(search.toLowerCase()) ||
-      (l.company || '').toLowerCase().includes(search.toLowerCase()) ||
-      (l.phone || '').toLowerCase().includes(search.toLowerCase()) ||
-      (l.email || '').toLowerCase().includes(search.toLowerCase())) &&
-    (filterStatus ? l.status === filterStatus : true) &&
-    (filterLeadType ? l.leadType === filterLeadType : true)
-  );
+  // Debounced server fetch on filter/search change
+  useEffect(() => {
+    const t = setTimeout(() => fetchLeadsPage(1, search, filterStatus, filterLeadType), 400);
+    return () => clearTimeout(t);
+  }, [search, filterStatus, filterLeadType]);
+
+  const handlePageChange = (page) => fetchLeadsPage(page, search, filterStatus, filterLeadType);
 
   const openAdd = () => { setForm(emptyForm); setEditId(null); setModal('form'); };
   const openEdit = (lead) => { setForm({ ...lead }); setEditId(lead.id); setModal('form'); };
@@ -190,12 +188,21 @@ export default function Leads() {
       {/* Table */}
       <Card>
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-700">{filtered.length} Leads</span>
+          <span className="text-sm font-semibold text-gray-700">{leadsTotal.toLocaleString()} Leads</span>
           <div className="flex items-center gap-1.5 text-xs text-gray-400">
             <Filter size={12} /> Filtered
           </div>
         </div>
-        <DataTable columns={columns} data={filtered} selectable={!isSalesExec} onSelectionChange={setSelected} />
+        <DataTable
+          columns={columns}
+          data={leads}
+          selectable={!isSalesExec}
+          onSelectionChange={setSelected}
+          serverTotal={leadsTotal}
+          serverPage={leadsPage}
+          serverPageSize={leadsLimit}
+          onPageChange={handlePageChange}
+        />
       </Card>
 
       {/* Add/Edit Modal */}

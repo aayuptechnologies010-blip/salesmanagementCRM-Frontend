@@ -10,6 +10,9 @@ export function DataProvider({ children }) {
   const [followUps, setFollowUps] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [leadsTotal, setLeadsTotal] = useState(0);
+  const [leadsPage, setLeadsPage] = useState(1);
+  const LEADS_LIMIT = 100;
 
   // Fetch all data from backend when user is authenticated
   useEffect(() => {
@@ -25,10 +28,12 @@ export function DataProvider({ children }) {
         setLoading(true);
         // Leads + followups first (critical), activities lazy
         const [leadsData, followUpsData] = await Promise.all([
-          api.get('/leads'),
+          api.get(`/leads?limit=${LEADS_LIMIT}&page=1`),
           api.get('/followups'),
         ]);
         setLeads(leadsData.leads || []);
+        setLeadsTotal(leadsData.total || 0);
+        setLeadsPage(1);
         setFollowUps(followUpsData || []);
       } catch (err) {
         console.error('Failed to fetch data:', err.message);
@@ -101,8 +106,27 @@ export function DataProvider({ children }) {
 
   // Refresh all leads from backend (used after import)
   const refreshLeads = async () => {
-    const leadsData = await api.get('/leads');
+    const leadsData = await api.get(`/leads?limit=${LEADS_LIMIT}&page=1`);
     setLeads(leadsData.leads || []);
+    setLeadsTotal(leadsData.total || 0);
+    setLeadsPage(1);
+  };
+
+  // Fetch a specific page of leads
+  const fetchLeadsPage = async (page, search = '', status = '', leadType = '') => {
+    setLoading(true);
+    try {
+      let url = `/leads?limit=${LEADS_LIMIT}&page=${page}`;
+      if (search)   url += `&search=${encodeURIComponent(search)}`;
+      if (status)   url += `&status=${encodeURIComponent(status)}`;
+      if (leadType) url += `&leadType=${encodeURIComponent(leadType)}`;
+      const leadsData = await api.get(url);
+      setLeads(leadsData.leads || []);
+      setLeadsTotal(leadsData.total || 0);
+      setLeadsPage(page);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Upload CSV for preview — returns { totalRows, previewRows, detectedColumns, filePath }
@@ -177,9 +201,10 @@ export function DataProvider({ children }) {
       leads: mappedLeads, 
       followUps: mappedFollowUps, 
       activities: mappedActivities,
+      leadsTotal, leadsPage, leadsLimit: LEADS_LIMIT,
       getLeadsForUser, getFollowUpsForUser, getActivitiesForUser,
       addLead, updateLead, deleteLead, assignLead,
-      importLeadsPreview, importLeadsConfirm,
+      importLeadsPreview, importLeadsConfirm, refreshLeads, fetchLeadsPage,
       addFollowUp, updateFollowUp, deleteFollowUp,
       loading
     }}>

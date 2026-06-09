@@ -1,14 +1,25 @@
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
-export default function DataTable({ columns, data, selectable = false, onSelectionChange }) {
+export default function DataTable({ columns, data, selectable = false, onSelectionChange, serverTotal, serverPage, serverPageSize, onPageChange }) {
   const [selected, setSelected] = useState([]);
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
 
-  // Pagination states
+  // Client-side pagination (used when serverTotal not provided)
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(50);
+
+  const isServer = !!serverTotal;
+  const activePage   = isServer ? serverPage  : currentPage;
+  const activeLimit  = isServer ? serverPageSize : pageSize;
+  const totalRecords = isServer ? serverTotal  : data.length;
+  const totalPages   = Math.max(1, Math.ceil(totalRecords / activeLimit));
+
+  const goToPage = (p) => {
+    if (isServer) onPageChange?.(p);
+    else setCurrentPage(p);
+  };
 
   const toggleSort = (key) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -22,11 +33,13 @@ export default function DataTable({ columns, data, selectable = false, onSelecti
       })
     : data;
 
-  const totalPages = Math.ceil(data.length / pageSize);
   const maxPage = Math.max(1, totalPages);
-  const activePage = currentPage > maxPage ? maxPage : currentPage;
+  const safePage = activePage > maxPage ? maxPage : activePage;
 
-  const paginatedData = sorted.slice((activePage - 1) * pageSize, activePage * pageSize);
+  // For server mode, data is already the current page
+  const paginatedData = isServer
+    ? sorted
+    : sorted.slice((safePage - 1) * activeLimit, safePage * activeLimit);
 
   const toggleRow = (id) => {
     const next = selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id];
@@ -102,80 +115,53 @@ export default function DataTable({ columns, data, selectable = false, onSelecti
         )}
       </div>
 
-      {data.length > 0 && (
+      {totalRecords > 0 && (
         <div className="px-5 py-3.5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium bg-white rounded-b-2xl">
-          <div className="flex items-center gap-2">
-            <span>Show</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
-            >
-              {[5, 10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <span>entries</span>
-          </div>
+          {!isServer && (
+            <div className="flex items-center gap-2">
+              <span>Show</span>
+              <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                className="border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-100">
+                {[25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
+              </select>
+              <span>entries</span>
+            </div>
+          )}
 
           <div>
-            Showing {Math.min((activePage - 1) * pageSize + 1, data.length)} to{' '}
-            {Math.min(activePage * pageSize, data.length)} of {data.length} entries
+            Showing {Math.min((safePage - 1) * activeLimit + 1, totalRecords).toLocaleString()} to{' '}
+            {Math.min(safePage * activeLimit, totalRecords).toLocaleString()} of {totalRecords.toLocaleString()} entries
           </div>
 
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={activePage === 1}
-              className="px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-all"
-            >
+            <button onClick={() => goToPage(Math.max(1, safePage - 1))} disabled={safePage === 1}
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
               Previous
             </button>
             {(() => {
               const pages = [];
-              const maxVisible = 5;
-              if (totalPages <= maxVisible) {
+              if (totalPages <= 7) {
                 for (let i = 1; i <= totalPages; i++) pages.push(i);
               } else {
                 pages.push(1);
-                const start = Math.max(2, activePage - 1);
-                const end = Math.min(totalPages - 1, activePage + 1);
-                if (start > 2) pages.push('ellipsis-start');
-                for (let i = start; i <= end; i++) {
-                  pages.push(i);
-                }
-                if (end < totalPages - 1) pages.push('ellipsis-end');
+                const start = Math.max(2, safePage - 1);
+                const end   = Math.min(totalPages - 1, safePage + 1);
+                if (start > 2) pages.push('...');
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (end < totalPages - 1) pages.push('...');
                 pages.push(totalPages);
               }
-              return pages.map((p, idx) => {
-                if (typeof p === 'string') {
-                  return <span key={p} className="px-1.5 text-gray-400">...</span>;
-                }
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setCurrentPage(p)}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center font-semibold transition-all ${
-                      activePage === p
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'border border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                );
-              });
+              return pages.map((p, idx) =>
+                typeof p === 'string'
+                  ? <span key={idx} className="px-1.5 text-gray-400">{p}</span>
+                  : <button key={p} onClick={() => goToPage(p)}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-semibold transition-all ${
+                        safePage === p ? 'bg-blue-600 text-white shadow-sm' : 'border border-gray-200 hover:bg-gray-50'
+                      }`}>{p}</button>
+              );
             })()}
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={activePage === totalPages}
-              className="px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-all"
-            >
+            <button onClick={() => goToPage(Math.min(totalPages, safePage + 1))} disabled={safePage === totalPages}
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
               Next
             </button>
           </div>
