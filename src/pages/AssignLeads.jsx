@@ -131,6 +131,8 @@ function TeamWorkload({ leads, teamMembers, onReassign }) {
     </Card>
   );
 }
+
+export default function AssignLeads() {
   const { leads, assignLead } = useData();
   const { teamMembers, currentUser } = useAuth();
 
