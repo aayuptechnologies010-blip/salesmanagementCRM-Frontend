@@ -47,7 +47,7 @@ export default function DataTable({ columns, data, selectable = false, onSelecti
           <thead>
             <tr className="border-b border-gray-200 bg-white">
               {selectable && (
-                <th className="sticky left-0 bg-white z-20 px-4 py-3 text-left">
+                <th className="sm:sticky sm:left-0 bg-white sm:z-20 px-4 py-3 text-left">
                   <input type="checkbox" checked={selected.length === paginatedData.length && paginatedData.length > 0}
                     onChange={toggleAll} className="rounded border-gray-300 text-blue-500 focus:ring-blue-200" />
                 </th>
@@ -55,7 +55,7 @@ export default function DataTable({ columns, data, selectable = false, onSelecti
               {columns.map((col, idx) => {
                 const isFirstCol = idx === 0;
                 const stickyClass = isFirstCol 
-                  ? `${selectable ? 'sticky left-[48px]' : 'sticky left-0'} bg-white z-20 border-r border-gray-200` 
+                  ? `${selectable ? 'sm:sticky sm:left-[48px]' : 'sm:sticky sm:left-0'} bg-white sm:z-20 sm:border-r sm:border-gray-200` 
                   : '';
                 return (
                   <th key={col.key} className={`${stickyClass} px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap`}>
@@ -77,7 +77,7 @@ export default function DataTable({ columns, data, selectable = false, onSelecti
             {paginatedData.map(row => (
               <tr key={row.id} className="group hover:bg-gray-50 transition-colors">
                 {selectable && (
-                  <td className="sticky left-0 bg-white group-hover:bg-gray-50 transition-colors z-10 px-4 py-3">
+                  <td className="sm:sticky sm:left-0 bg-white group-hover:bg-gray-50 transition-colors sm:z-10 px-4 py-3">
                     <input type="checkbox" checked={selected.includes(row.id)} onChange={() => toggleRow(row.id)}
                       className="rounded border-gray-300 text-blue-500 focus:ring-blue-200" />
                   </td>
@@ -85,7 +85,7 @@ export default function DataTable({ columns, data, selectable = false, onSelecti
                 {columns.map((col, idx) => {
                   const isFirstCol = idx === 0;
                   const stickyClass = isFirstCol 
-                    ? `${selectable ? 'sticky left-[48px]' : 'sticky left-0'} bg-white group-hover:bg-gray-50 transition-colors z-10 border-r border-gray-200` 
+                    ? `${selectable ? 'sm:sticky sm:left-[48px]' : 'sm:sticky sm:left-0'} bg-white group-hover:bg-gray-50 transition-colors sm:z-10 sm:border-r sm:border-gray-200` 
                     : '';
                   return (
                     <td key={col.key} className={`${stickyClass} px-4 py-3 text-gray-700 whitespace-nowrap`}>
