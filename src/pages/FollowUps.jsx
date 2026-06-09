@@ -71,7 +71,10 @@ export default function FollowUps() {
   const filtered = followUps.filter(f => filter === 'All' || f.status === filter);
 
   const openAdd = () => { setForm(emptyForm); setEditId(null); setModal('form'); };
-  const openEdit = (f) => { setForm({ ...f }); setEditId(f.id); setModal('form'); };
+  const openEdit = (f) => {
+    setSelected(null);
+    setTimeout(() => { setForm({ ...f }); setEditId(f.id); setModal('form'); }, 100);
+  };
 
   const handleSave = () => {
     if (!form.lead.trim()) return;
@@ -160,10 +163,10 @@ export default function FollowUps() {
       </div>
 
       {/* Detail Modal */}
-      {selected && (() => {
-        const { f, linkedLead } = selected;
-        return (
-          <Modal isOpen onClose={() => setSelected(null)} title="Follow-up Details" size="md">
+      <Modal isOpen={!!selected} onClose={() => setSelected(null)} title="Follow-up Details" size="md">
+        {selected && (() => {
+          const { f, linkedLead } = selected;
+          return (
             <div className="space-y-4">
               {/* Status + Priority */}
               <div className="flex items-center gap-2 flex-wrap">
@@ -182,9 +185,9 @@ export default function FollowUps() {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { icon: Calendar, label: 'Date',        value: f.date },
-                    { icon: Clock,    label: 'Time',        value: f.time },
+                    { icon: Clock,    label: 'Time',        value: f.time || '—' },
                     { icon: User,     label: 'Assigned To', value: f.assignedTo || '—' },
-                    { icon: Tag,      label: 'Priority',    value: f.priority },
+                    { icon: Tag,      label: 'Priority',    value: f.priority || '—' },
                   ].map(({ icon: Icon, label, value }) => (
                     <div key={label} className="flex items-center gap-2">
                       <Icon size={13} className="text-gray-400 flex-shrink-0" />
@@ -197,7 +200,7 @@ export default function FollowUps() {
                 </div>
               </div>
 
-              {/* Linked Lead Info */}
+              {/* Lead Details */}
               <div className="bg-blue-50 rounded-2xl p-4 space-y-2.5">
                 <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide mb-1">Lead Details</p>
                 {linkedLead ? (
@@ -229,34 +232,37 @@ export default function FollowUps() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-400">Lead: <strong className="text-gray-700">{f.lead}</strong> — {f.company || 'No company'}</p>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{f.lead}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{f.company || '—'}</p>
+                  </div>
                 )}
               </div>
-            </div>
 
-            <div className="flex justify-between gap-2 mt-6">
-              <button onClick={() => { toggleDone(f); setSelected(null); }}
-                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                  f.status === 'Done'
-                    ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                    : 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'
-                }`}>
-                <CheckCircle size={14} /> {f.status === 'Done' ? 'Mark Pending' : 'Mark Done'}
-              </button>
-              <div className="flex gap-2">
-                {linkedLead && (
-                  <SecondaryButton onClick={() => { setSelected(null); navigate(`/leads/${linkedLead._id || linkedLead.id}`); }}>
-                    View Lead <ArrowRight size={14} />
-                  </SecondaryButton>
-                )}
-                <PrimaryButton onClick={() => { setSelected(null); openEdit(f); }}>
-                  <Edit2 size={14} /> Edit
-                </PrimaryButton>
+              <div className="flex justify-between gap-2 mt-2">
+                <button onClick={() => { toggleDone(f); setSelected(null); }}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                    f.status === 'Done'
+                      ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                      : 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'
+                  }`}>
+                  <CheckCircle size={14} /> {f.status === 'Done' ? 'Mark Pending' : 'Mark Done'}
+                </button>
+                <div className="flex gap-2">
+                  {linkedLead && (
+                    <SecondaryButton onClick={() => { setSelected(null); navigate(`/leads/${linkedLead._id || linkedLead.id}`); }}>
+                      View Lead <ArrowRight size={14} />
+                    </SecondaryButton>
+                  )}
+                  <PrimaryButton onClick={() => openEdit(f)}>
+                    <Edit2 size={14} /> Edit
+                  </PrimaryButton>
+                </div>
               </div>
             </div>
-          </Modal>
-        );
-      })()}
+          );
+        })()}
+      </Modal>
 
       {/* Add/Edit Modal */}
       <Modal isOpen={modal === 'form'} onClose={() => setModal(null)} title={editId ? 'Edit Follow-up' : 'Add Follow-up'} size="md">
