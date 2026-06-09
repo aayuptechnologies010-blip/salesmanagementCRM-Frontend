@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Calendar, Clock, CheckCircle, Bell, Plus, Trash2, Edit2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, Clock, CheckCircle, Bell, Plus, Trash2, Edit2, User, Building2, Phone, Mail, Tag, ArrowRight } from 'lucide-react';
 import Card from '../components/shared/Card';
 import StatusBadge from '../components/shared/StatusBadge';
 import Modal from '../components/shared/Modal';
@@ -56,14 +57,16 @@ function MiniCalendar({ followUps }) {
 const emptyForm = { lead: '', company: '', date: '', time: '', assignedTo: '', priority: 'Medium', status: 'Pending' };
 
 export default function FollowUps() {
-  const { getFollowUpsForUser, addFollowUp, updateFollowUp, deleteFollowUp } = useData();
+  const { getFollowUpsForUser, addFollowUp, updateFollowUp, deleteFollowUp, leads } = useData();
   const { teamMembers, currentUser } = useAuth();
+  const navigate = useNavigate();
   const followUps = getFollowUpsForUser(currentUser);
   const isSalesExec = currentUser?.role === 'Sales Executive';
   const [filter, setFilter] = useState('All');
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
+  const [selected, setSelected] = useState(null); // for detail modal
 
   const filtered = followUps.filter(f => filter === 'All' || f.status === filter);
 
@@ -114,10 +117,13 @@ export default function FollowUps() {
             {filtered.length === 0 && (
               <Card className="p-8 text-center text-gray-400 text-sm">No follow-ups found.</Card>
             )}
-            {filtered.map(f => (
-              <Card key={f.id} className="p-4 hover:shadow-md transition-shadow">
+            {filtered.map(f => {
+              const linkedLead = leads.find(l => l.name === f.lead);
+              return (
+              <Card key={f.id} className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => setSelected({ f, linkedLead })}>
                 <div className="flex items-start gap-4">
-                  <button onClick={() => toggleDone(f)}
+                  <button onClick={e => { e.stopPropagation(); toggleDone(f); }}
                     className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors
                       ${f.status === 'Done' ? 'bg-gray-100 hover:bg-gray-200' : 'bg-blue-50 hover:bg-blue-100'}`}>
                     {f.status === 'Done'
@@ -142,15 +148,115 @@ export default function FollowUps() {
                     </div>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
-                    <IconButton onClick={() => openEdit(f)} variant="blue" title="Edit Follow-up"><Edit2 size={14} /></IconButton>
-                    <IconButton onClick={() => deleteFollowUp(f.id)} variant="red" title="Delete Follow-up"><Trash2 size={14} /></IconButton>
+                    <IconButton onClick={e => { e.stopPropagation(); openEdit(f); }} variant="blue" title="Edit Follow-up"><Edit2 size={14} /></IconButton>
+                    <IconButton onClick={e => { e.stopPropagation(); deleteFollowUp(f.id); }} variant="red" title="Delete Follow-up"><Trash2 size={14} /></IconButton>
                   </div>
                 </div>
               </Card>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
+
+      {/* Detail Modal */}
+      {selected && (() => {
+        const { f, linkedLead } = selected;
+        return (
+          <Modal isOpen onClose={() => setSelected(null)} title="Follow-up Details" size="md">
+            <div className="space-y-4">
+              {/* Status + Priority */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <StatusBadge status={f.status} />
+                <StatusBadge status={f.priority} />
+                <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold ${
+                  f.status === 'Done' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'
+                }`}>
+                  {f.status === 'Done' ? '✓ Completed' : '⏳ Pending'}
+                </span>
+              </div>
+
+              {/* Follow-up Info */}
+              <div className="bg-gray-50 rounded-2xl p-4 space-y-2.5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Follow-up Info</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { icon: Calendar, label: 'Date',        value: f.date },
+                    { icon: Clock,    label: 'Time',        value: f.time },
+                    { icon: User,     label: 'Assigned To', value: f.assignedTo || '—' },
+                    { icon: Tag,      label: 'Priority',    value: f.priority },
+                  ].map(({ icon: Icon, label, value }) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <Icon size={13} className="text-gray-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400">{label}</p>
+                        <p className="text-sm font-semibold text-gray-800">{value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Linked Lead Info */}
+              <div className="bg-blue-50 rounded-2xl p-4 space-y-2.5">
+                <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide mb-1">Lead Details</p>
+                {linkedLead ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                        {linkedLead.name?.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800">{linkedLead.name}</p>
+                        <p className="text-xs text-gray-500">{linkedLead.company}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {[
+                        { icon: Phone,     label: 'Phone',  value: linkedLead.phone },
+                        { icon: Mail,      label: 'Email',  value: linkedLead.email },
+                        { icon: Tag,       label: 'Status', value: linkedLead.status },
+                        { icon: Building2, label: 'Source', value: linkedLead.source },
+                      ].filter(i => i.value).map(({ icon: Icon, label, value }) => (
+                        <div key={label} className="flex items-center gap-1.5">
+                          <Icon size={12} className="text-blue-400 flex-shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-gray-400">{label}</p>
+                            <p className="text-xs font-semibold text-gray-800 truncate">{value}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">Lead: <strong className="text-gray-700">{f.lead}</strong> — {f.company || 'No company'}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-between gap-2 mt-6">
+              <button onClick={() => { toggleDone(f); setSelected(null); }}
+                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  f.status === 'Done'
+                    ? 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    : 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'
+                }`}>
+                <CheckCircle size={14} /> {f.status === 'Done' ? 'Mark Pending' : 'Mark Done'}
+              </button>
+              <div className="flex gap-2">
+                {linkedLead && (
+                  <SecondaryButton onClick={() => { setSelected(null); navigate(`/leads/${linkedLead._id || linkedLead.id}`); }}>
+                    View Lead <ArrowRight size={14} />
+                  </SecondaryButton>
+                )}
+                <PrimaryButton onClick={() => { setSelected(null); openEdit(f); }}>
+                  <Edit2 size={14} /> Edit
+                </PrimaryButton>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* Add/Edit Modal */}
       <Modal isOpen={modal === 'form'} onClose={() => setModal(null)} title={editId ? 'Edit Follow-up' : 'Add Follow-up'} size="md">
