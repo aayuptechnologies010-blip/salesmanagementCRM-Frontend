@@ -125,10 +125,7 @@ export function DataProvider({ children }) {
   // Confirm import using temp filename from preview
   const importLeadsConfirm = async (filename) => {
     const result = await api.post('/leads/import/confirm', { filename });
-    // Append new leads to state instead of refetching all leads
-    if (result.leads?.length) {
-      setLeads(prev => [...result.leads, ...prev]);
-    }
+    await refreshLeads();
     return result;
   };
 
