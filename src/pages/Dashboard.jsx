@@ -16,12 +16,14 @@ export default function Dashboard() {
   const [revenueData, setRevenueData] = useState([]);
 
   useEffect(() => {
-    api.get('/dashboard').then(data => {
-      setStats(data);
-    }).catch(() => {});
+    api.get('/dashboard').then(data => setStats(data)).catch(() => {});
 
-    // Revenue: last 6 months from Won leads
-    api.get('/leads?status=Won&limit=1000').then(data => {
+    // Revenue: last 6 months — for sales exec only their assigned Won leads
+    const revenueUrl = isSalesExec
+      ? `/leads?status=Won&assignedTo=${encodeURIComponent(currentUser.name)}&limit=1000`
+      : '/leads?status=Won&limit=1000';
+
+    api.get(revenueUrl).then(data => {
       const allLeads = data.leads || [];
       const months = [];
       for (let i = 5; i >= 0; i--) {

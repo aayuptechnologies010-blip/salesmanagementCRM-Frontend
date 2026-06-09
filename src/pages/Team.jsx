@@ -13,7 +13,7 @@ const emptyForm = { name: '', email: '', password: '', role: 'Sales Executive', 
 
 export default function Team() {
   const navigate = useNavigate();
-  const { teamMembers, allUsers, addUser, updateUser, deleteUser } = useAuth();
+  const { currentUser, teamMembers, allUsers, addUser, updateUser, deleteUser } = useAuth();
   const { leads } = useData();
 
   const [modal, setModal] = useState(null);
@@ -28,7 +28,12 @@ export default function Team() {
   const [leadSearch, setLeadSearch] = useState('');
 
   const members = allUsers.filter(u => u.role !== 'Super Admin');
-  const filteredMembers = members.filter(m =>
+  const isAdmin = currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin';
+
+  // Sales Executive sirf apna profile dekhe
+  const visibleMembers = isAdmin ? members : members.filter(m => m._id === currentUser?._id || m.id === currentUser?.id);
+
+  const filteredMembers = visibleMembers.filter(m =>
     ((m.name || '').toLowerCase().includes(search.toLowerCase()) ||
       (m.email || '').toLowerCase().includes(search.toLowerCase())) &&
     (filterRole ? m.role === filterRole : true) &&
@@ -81,7 +86,11 @@ export default function Team() {
           onClick={() => openMemberLeads(row)}
           className="flex items-center gap-2.5 hover:text-blue-600 transition-colors group"
         >
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600 group-hover:bg-blue-200">{row.avatar}</div>
+          <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600 group-hover:bg-blue-200">
+            {row.profileImage
+              ? <img src={row.profileImage} alt={v} className="w-full h-full object-cover" />
+              : row.avatar}
+          </div>
           <span className="font-medium text-gray-800 group-hover:text-blue-600">{v}</span>
         </button>
       )
@@ -131,7 +140,7 @@ export default function Team() {
 
   return (
     <div className="space-y-4">
-      {teams.length > 0 && (
+      {isAdmin && teams.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {teams.map(team => {
             const teamList = members.filter(m => m.team === team);
@@ -144,8 +153,10 @@ export default function Team() {
                 <div className="flex -space-x-2">
                   {teamList.map(m => (
                     <div key={m.id || m._id} title={m.name}
-                      className="w-8 h-8 bg-blue-100 border-2 border-white rounded-full flex items-center justify-center text-xs font-bold text-blue-600">
-                      {m.avatar}
+                      className="w-8 h-8 border-2 border-white rounded-full overflow-hidden flex-shrink-0 bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">
+                      {m.profileImage
+                        ? <img src={m.profileImage} alt={m.name} className="w-full h-full object-cover" />
+                        : m.avatar}
                     </div>
                   ))}
                 </div>
@@ -161,28 +172,30 @@ export default function Team() {
       <Card>
         <div className="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
           <span className="text-sm font-semibold text-gray-700">{filteredMembers.length} Team Members</span>
-          <PrimaryButton onClick={openAdd}><Plus size={14} /> Add Member</PrimaryButton>
+          {isAdmin && <PrimaryButton onClick={openAdd}><Plus size={14} /> Add Member</PrimaryButton>}
         </div>
-        <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex flex-col sm:flex-row gap-3 items-center">
-          <div className="relative flex-1 min-w-48 w-full">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or email..."
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none bg-white" />
+        {isAdmin && (
+          <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex flex-col sm:flex-row gap-3 items-center">
+            <div className="relative flex-1 min-w-48 w-full">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or email..."
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none bg-white" />
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
+                className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
+                <option value="">All Roles</option>
+                <option value="Admin">Admin</option>
+                <option value="Sales Executive">Sales Executive</option>
+              </select>
+              <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)}
+                className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
+                <option value="">All Teams</option>
+                {teams.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
-              className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
-              <option value="">All Roles</option>
-              <option value="Admin">Admin</option>
-              <option value="Sales Executive">Sales Executive</option>
-            </select>
-            <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)}
-              className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
-              <option value="">All Teams</option>
-              {teams.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-        </div>
+        )}
         <DataTable columns={columns} data={filteredMembers} />
       </Card>
 
@@ -193,8 +206,10 @@ export default function Team() {
           <div className="space-y-4">
             {/* Member summary */}
             <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                {selectedMember.avatar}
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                {selectedMember.profileImage
+                  ? <img src={selectedMember.profileImage} alt={selectedMember.name} className="w-full h-full object-cover" />
+                  : selectedMember.avatar}
               </div>
               <div className="flex-1">
                 <p className="font-semibold text-gray-800">{selectedMember.name}</p>
