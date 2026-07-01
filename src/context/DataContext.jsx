@@ -6,31 +6,84 @@ const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
   const { currentUser } = useAuth();
-  const [leads, setLeads] = useState([]);
-  const [followUps, setFollowUps] = useState([]);
-  const [activities, setActivities] = useState([]);
-  const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [leads, setLeads] = useState(() => {
+    try {
+      const saved = localStorage.getItem('crm_leads');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [followUps, setFollowUps] = useState(() => {
+    try {
+      const saved = localStorage.getItem('crm_followups');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [activities, setActivities] = useState(() => {
+    try {
+      const saved = localStorage.getItem('crm_activities');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [invoices, setInvoices] = useState(() => {
+    try {
+      const saved = localStorage.getItem('crm_invoices');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const saved = localStorage.getItem('crm_leads');
+      return !saved;
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
     if (!currentUser) {
       setLeads([]);
       setFollowUps([]);
       setActivities([]);
+      setInvoices([]);
       setLoading(false);
+      try {
+        localStorage.removeItem('crm_leads');
+        localStorage.removeItem('crm_followups');
+        localStorage.removeItem('crm_activities');
+        localStorage.removeItem('crm_invoices');
+      } catch {}
       return;
     }
     const fetchData = async () => {
       try {
-        setLoading(true);
+        const hasCache = localStorage.getItem('crm_leads');
+        if (!hasCache) {
+          setLoading(true);
+        }
         const [leadsData, followUpsData, invoicesData] = await Promise.all([
           api.get('/leads'),
           api.get('/followups'),
           api.get('/invoices'),
         ]);
-        setLeads(leadsData.leads || []);
-        setFollowUps(followUpsData || []);
-        setInvoices(invoicesData || []);
+        const freshLeads = leadsData.leads || [];
+        const freshFollowUps = followUpsData || [];
+        const freshInvoices = invoicesData || [];
+
+        setLeads(freshLeads);
+        setFollowUps(freshFollowUps);
+        setInvoices(freshInvoices);
+
+        localStorage.setItem('crm_leads', JSON.stringify(freshLeads));
+        localStorage.setItem('crm_followups', JSON.stringify(freshFollowUps));
+        localStorage.setItem('crm_invoices', JSON.stringify(freshInvoices));
       } catch (err) {
         console.error('Failed to fetch data:', err.message);
       } finally {
@@ -39,7 +92,9 @@ export function DataProvider({ children }) {
       // Activities load in background — non-blocking
       try {
         const activitiesData = await api.get('/activities');
-        setActivities(activitiesData || []);
+        const freshActivities = activitiesData || [];
+        setActivities(freshActivities);
+        localStorage.setItem('crm_activities', JSON.stringify(freshActivities));
       } catch (_) {}
     };
     fetchData();
@@ -75,44 +130,70 @@ export function DataProvider({ children }) {
   // ── Leads ──
   const addLead = async (data, userName = 'Admin') => {
     const newLead = await api.post('/leads', data);
-    setLeads(prev => [newLead, ...prev]);
+    setLeads(prev => {
+      const updated = [newLead, ...prev];
+      try { localStorage.setItem('crm_leads', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     return getMappedItem(newLead);
   };
 
   const updateLead = async (id, data, userName = 'Admin') => {
     const updatedLead = await api.patch(`/leads/${id}`, data);
-    setLeads(prev => prev.map(l => {
-      if (l._id === id || l.id === id) return { ...l, ...updatedLead };
-      return l;
-    }));
+    setLeads(prev => {
+      const updated = prev.map(l => {
+        if (l._id === id || l.id === id) return { ...l, ...updatedLead };
+        return l;
+      });
+      try { localStorage.setItem('crm_leads', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     return getMappedItem(updatedLead);
   };
 
   const deleteLead = async (ids) => {
     await api.delete('/leads', { ids });
-    setLeads(prev => prev.filter(l => !ids.includes(l._id) && !ids.includes(l.id)));
+    setLeads(prev => {
+      const updated = prev.filter(l => !ids.includes(l._id) && !ids.includes(l.id));
+      try { localStorage.setItem('crm_leads', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
   };
 
   const refreshLeads = async () => {
     const leadsData = await api.get('/leads');
-    setLeads(leadsData.leads || []);
+    const fresh = leadsData.leads || [];
+    setLeads(fresh);
+    try { localStorage.setItem('crm_leads', JSON.stringify(fresh)); } catch {}
   };
 
   const addInvoice = async (data) => {
     const newInvoice = await api.post('/invoices', data);
-    setInvoices(prev => [newInvoice, ...prev]);
+    setInvoices(prev => {
+      const updated = [newInvoice, ...prev];
+      try { localStorage.setItem('crm_invoices', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     return newInvoice;
   };
 
   const updateInvoice = async (id, data) => {
     const updated = await api.patch(`/invoices/${id}`, data);
-    setInvoices(prev => prev.map(inv => (inv._id === id || inv.id === id) ? updated : inv));
+    setInvoices(prev => {
+      const updatedList = prev.map(inv => (inv._id === id || inv.id === id) ? updated : inv);
+      try { localStorage.setItem('crm_invoices', JSON.stringify(updatedList)); } catch {}
+      return updatedList;
+    });
     return updated;
   };
 
   const deleteInvoice = async (id) => {
     await api.delete(`/invoices/${id}`);
-    setInvoices(prev => prev.filter(inv => inv._id !== id && inv.id !== id));
+    setInvoices(prev => {
+      const updated = prev.filter(inv => inv._id !== id && inv.id !== id);
+      try { localStorage.setItem('crm_invoices', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
   };
 
   const importLeadsPreview = async (file) => {
@@ -129,36 +210,54 @@ export function DataProvider({ children }) {
 
   const assignLead = async (ids, assignTo, followUpDate = '', userName = 'Admin') => {
     await api.patch('/leads/assign/bulk', { ids, assignedTo: assignTo, followUpDate });
-    setLeads(prev => prev.map(l => {
-      if (ids.includes(l._id) || ids.includes(l.id)) {
-        const updated = { ...l, assignedTo: assignTo };
-        if (followUpDate) updated.followUpDate = followUpDate;
-        return updated;
-      }
-      return l;
-    }));
+    setLeads(prev => {
+      const updated = prev.map(l => {
+        if (ids.includes(l._id) || ids.includes(l.id)) {
+          const u = { ...l, assignedTo: assignTo };
+          if (followUpDate) u.followUpDate = followUpDate;
+          return u;
+        }
+        return l;
+      });
+      try { localStorage.setItem('crm_leads', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     if (followUpDate) {
       const followUpsData = await api.get('/followups');
-      setFollowUps(followUpsData || []);
+      const freshFU = followUpsData || [];
+      setFollowUps(freshFU);
+      try { localStorage.setItem('crm_followups', JSON.stringify(freshFU)); } catch {}
     }
   };
 
   // ── Follow-ups ──
   const addFollowUp = async (data, userName = 'Admin') => {
     const newFU = await api.post('/followups', data);
-    setFollowUps(prev => [newFU, ...prev]);
+    setFollowUps(prev => {
+      const updated = [newFU, ...prev];
+      try { localStorage.setItem('crm_followups', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     return getMappedItem(newFU);
   };
 
   const updateFollowUp = async (id, data) => {
     const updatedFU = await api.patch(`/followups/${id}`, data);
-    setFollowUps(prev => prev.map(f => (f._id === id || f.id === id) ? updatedFU : f));
+    setFollowUps(prev => {
+      const updated = prev.map(f => (f._id === id || f.id === id) ? updatedFU : f);
+      try { localStorage.setItem('crm_followups', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
     return getMappedItem(updatedFU);
   };
 
   const deleteFollowUp = async (id) => {
     await api.delete(`/followups/${id}`);
-    setFollowUps(prev => prev.filter(f => f._id !== id && f.id !== id));
+    setFollowUps(prev => {
+      const updated = prev.filter(f => f._id !== id && f.id !== id);
+      try { localStorage.setItem('crm_followups', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
   };
 
   // ── Role-filtered getters ──

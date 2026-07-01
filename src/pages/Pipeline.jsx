@@ -67,7 +67,7 @@ const stageColors = {
                   className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing hover:border-blue-300 transition-colors"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium text-gray-800 text-sm">{lead.name}</h4>
+                    <h4 className="font-medium text-gray-800 text-sm">{lead.contactPerson || lead.name}</h4>
                     <span className="text-xs font-medium bg-green-50 text-green-600 px-2 py-0.5 rounded-md border border-green-100">
                       {lead.value ? `₹${lead.value}` : '—'}
                     </span>
@@ -77,7 +77,7 @@ const stageColors = {
                   <div className="flex items-center justify-between text-xs text-gray-400">
                     <span className="truncate pr-2">{lead.email}</span>
                     <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold flex-shrink-0">
-                      {lead.name.charAt(0)}
+                      {(lead.contactPerson || lead.name).charAt(0)}
                     </div>
                   </div>
                 </div>

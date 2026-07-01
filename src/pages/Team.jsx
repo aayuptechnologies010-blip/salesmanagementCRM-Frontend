@@ -278,7 +278,7 @@ const openAdd = () => { setForm(emptyForm); setEditId(null); setFormError(''); s
                           onClick={() => { setModal(null); navigate(`/leads/${lead._id || lead.id}`); }}
                           className="hover:bg-blue-50 cursor-pointer transition-colors">
                           <td className="px-4 py-3">
-                            <p className="font-semibold text-blue-600">{lead.name}</p>
+                            <p className="font-semibold text-blue-600">{lead.contactPerson || lead.name}</p>
                             <p className="text-xs text-gray-400">{lead.company || '—'} · {lead.phone || ''}</p>
                           </td>
                           <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>

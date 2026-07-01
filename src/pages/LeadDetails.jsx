@@ -111,11 +111,11 @@ export default function LeadDetails() {
 
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0 ${cfg.color}`}>
-              {lead.name.charAt(0)}
+              {(lead.contactPerson || lead.name).charAt(0)}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl font-bold text-gray-900">{lead.name}</h1>
+                <h1 className="text-xl font-bold text-gray-900">{lead.contactPerson || lead.name}</h1>
                 <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${cfg.light}`}>{status}</span>
               </div>
               <p className="text-sm text-gray-500 mt-0.5">{lead.company} · Added {lead.createdAt}</p>

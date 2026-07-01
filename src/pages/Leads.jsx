@@ -93,10 +93,13 @@ export default function Leads() {
 
   const columns = [
     {
-      key: 'name', label: 'Name', sortable: true, render: (v, row) => (
-        <button onClick={() => navigate(`/leads/${row.id}`)}
-          className="font-semibold text-blue-600 hover:text-blue-700 hover:underline text-left">{v}</button>
-      )
+      key: 'name', label: 'Name', sortable: true, render: (v, row) => {
+        const displayName = row.contactPerson || v;
+        return (
+          <button onClick={() => navigate(`/leads/${row.id}`)}
+            className="font-semibold text-blue-600 hover:text-blue-700 hover:underline text-left">{displayName}</button>
+        );
+      }
     },
     { key: 'company', label: 'Company', sortable: true },
     {

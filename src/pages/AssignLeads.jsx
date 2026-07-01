@@ -91,7 +91,7 @@ function TeamWorkload({ leads, teamMembers }) {
                         <tbody className="divide-y divide-gray-100">
                           {filtered.map(lead => (
                             <tr key={lead.id} className="hover:bg-white transition-colors">
-                              <td className="px-4 py-2 font-medium text-gray-800">{lead.name}</td>
+                              <td className="px-4 py-2 font-medium text-gray-800">{lead.contactPerson || lead.name}</td>
                               <td className="px-3 py-2 text-gray-500">{lead.company || '—'}</td>
                               <td className="px-3 py-2">
                                 <StatusBadge status={lead.status} />

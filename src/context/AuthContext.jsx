@@ -13,7 +13,15 @@ export function AuthProvider({ children }) {
     }
   });
   const [allUsers, setAllUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    try {
+      const token = localStorage.getItem('crm_token');
+      const session = localStorage.getItem('crm_session');
+      return !(token && session);
+    } catch {
+      return true;
+    }
+  });
 
   // Verify token on mount and fetch users if authenticated
   useEffect(() => {
@@ -125,6 +133,28 @@ export function AuthProvider({ children }) {
   const mappedAllUsers = allUsers.map(getMappedUser);
   const mappedTeamMembers = teamMembers.map(getMappedUser);
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white font-sans">
+        <div className="flex flex-col items-center space-y-6">
+          <div className="relative w-20 h-20">
+            <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-blue-500 border-l-transparent animate-spin duration-1000"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-t-transparent border-r-indigo-400 border-b-transparent border-l-indigo-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+            <div className="absolute inset-4 rounded-full bg-slate-800 flex items-center justify-center font-bold text-lg text-blue-400 shadow-inner">
+              A
+            </div>
+          </div>
+          <div className="flex flex-col items-center space-y-1">
+            <h2 className="text-2xl font-bold tracking-wider bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
+              Ayup CRM
+            </h2>
+            <p className="text-xs text-slate-400 font-medium animate-pulse">Loading secure session...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={{
       currentUser: mappedCurrentUser, login, logout,
@@ -132,7 +162,7 @@ export function AuthProvider({ children }) {
       teamMembers: mappedTeamMembers, allUsers: mappedAllUsers,
       loading
     }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
