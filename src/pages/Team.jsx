@@ -53,10 +53,26 @@ const openAdd = () => { setForm(emptyForm); setEditId(null); setFormError(''); s
     if (!editId && !form.password.trim()) { setFormError('Password is required for new members.'); return; }
     const duplicate = allUsers.find(u => u.email.toLowerCase() === form.email.toLowerCase() && (u.id !== editId && u._id !== editId));
     if (duplicate) { setFormError('This email is already registered.'); return; }
-    if (editId) await updateUser(editId, form);
-    else await addUser(form);
-    setModal(null);
-    setFormError('');
+
+    try {
+      const payload = {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        role: form.role,
+        team: form.team || '-',
+        status: form.status,
+      };
+      if (form.password && form.password.trim()) {
+        payload.password = form.password.trim();
+      }
+
+      if (editId) await updateUser(editId, payload);
+      else await addUser(payload);
+      setModal(null);
+      setFormError('');
+    } catch (err) {
+      setFormError(err.message || 'Failed to save changes. Please try again.');
+    }
   };
 
   const handleDelete = async (id) => {
