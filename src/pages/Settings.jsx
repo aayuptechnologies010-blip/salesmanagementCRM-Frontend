@@ -261,81 +261,83 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* FCM Push Notification Live Tester */}
-          <div className="mt-8 pt-6 border-t border-gray-100 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-sm">
-                🔔
-              </div>
-              <div>
-                <h4 className="font-semibold text-gray-800 text-sm">FCM Live Push Notification Test Panel</h4>
-                <p className="text-xs text-gray-400">Test live browser & desktop notifications for your device</p>
-              </div>
-            </div>
-
-            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-xs font-semibold text-gray-700">Device Push Permission:</span>
-                <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-                  typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {typeof window !== 'undefined' && 'Notification' in window ? Notification.permission.toUpperCase() : 'NOT SUPPORTED'}
-                </span>
-              </div>
-
-              {fcmToken ? (
-                <div className="space-y-1">
-                  <span className="text-[11px] font-semibold text-gray-500 uppercase">Your FCM Token (Active):</span>
-                  <div className="p-2 bg-white rounded-xl border border-gray-200 text-[11px] font-mono text-gray-600 break-all select-all max-h-20 overflow-y-auto">
-                    {fcmToken}
-                  </div>
+          {/* FCM Push Notification Live Tester (Super Admin & Admin Only) */}
+          {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
+            <div className="mt-8 pt-6 border-t border-gray-100 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-sm">
+                  🔔
                 </div>
-              ) : (
-                <p className="text-xs text-gray-500">Token generate karne ke liye neeche permission enable kijiye.</p>
-              )}
+                <div>
+                  <h4 className="font-semibold text-gray-800 text-sm">FCM Live Push Notification Test Panel</h4>
+                  <p className="text-xs text-gray-400">Test live browser & desktop notifications for your device</p>
+                </div>
+              </div>
 
-              <div className="flex gap-2 flex-wrap pt-1">
-                <SecondaryButton
-                  onClick={async () => {
-                    const token = await requestNotificationPermission();
-                    if (token) setFcmToken(token);
-                  }}
-                  className="!text-xs !py-2"
-                >
-                  ⚡ Request / Refresh Token
-                </SecondaryButton>
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-semibold text-gray-700">Device Push Permission:</span>
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+                    typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {typeof window !== 'undefined' && 'Notification' in window ? Notification.permission.toUpperCase() : 'NOT SUPPORTED'}
+                  </span>
+                </div>
 
-                <PrimaryButton
-                  onClick={async () => {
-                    if (!('Notification' in window)) {
-                      alert('Browser desktop notifications support nahi karta.');
-                      return;
-                    }
-                    if (Notification.permission !== 'granted') {
+                {fcmToken ? (
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-semibold text-gray-500 uppercase">Your FCM Token (Active):</span>
+                    <div className="p-2 bg-white rounded-xl border border-gray-200 text-[11px] font-mono text-gray-600 break-all select-all max-h-20 overflow-y-auto">
+                      {fcmToken}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">Token generate karne ke liye neeche permission enable kijiye.</p>
+                )}
+
+                <div className="flex gap-2 flex-wrap pt-1">
+                  <SecondaryButton
+                    onClick={async () => {
                       const token = await requestNotificationPermission();
                       if (token) setFcmToken(token);
-                    }
-                    if (Notification.permission === 'granted') {
-                      new Notification('🔥 CRM Live Test Notification', {
-                        body: `Hello ${currentUser?.name || 'User'}! FCM live notification system is working perfectly.`,
-                        icon: '/logo.png',
-                        badge: '/logo.png'
-                      });
-                      setTestSent(true);
-                      setTimeout(() => setTestSent(false), 3000);
-                    } else {
-                      alert('Please allow notification permission in your browser URL bar.');
-                    }
-                  }}
-                  className="!text-xs !py-2 !bg-indigo-600 hover:!bg-indigo-700"
-                >
-                  🚀 {testSent ? 'Notification Sent! ✓' : 'Send Test Notification'}
-                </PrimaryButton>
+                    }}
+                    className="!text-xs !py-2"
+                  >
+                    ⚡ Request / Refresh Token
+                  </SecondaryButton>
+
+                  <PrimaryButton
+                    onClick={async () => {
+                      if (!('Notification' in window)) {
+                        alert('Browser desktop notifications support nahi karta.');
+                        return;
+                      }
+                      if (Notification.permission !== 'granted') {
+                        const token = await requestNotificationPermission();
+                        if (token) setFcmToken(token);
+                      }
+                      if (Notification.permission === 'granted') {
+                        new Notification('🔥 CRM Live Test Notification', {
+                          body: `Hello ${currentUser?.name || 'User'}! FCM live notification system is working perfectly.`,
+                          icon: '/logo.png',
+                          badge: '/logo.png'
+                        });
+                        setTestSent(true);
+                        setTimeout(() => setTestSent(false), 3000);
+                      } else {
+                        alert('Please allow notification permission in your browser URL bar.');
+                      }
+                    }}
+                    className="!text-xs !py-2 !bg-indigo-600 hover:!bg-indigo-700"
+                  >
+                    🚀 {testSent ? 'Notification Sent! ✓' : 'Send Test Notification'}
+                  </PrimaryButton>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </Card>
       )}
 

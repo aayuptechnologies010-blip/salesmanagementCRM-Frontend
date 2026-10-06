@@ -97,34 +97,36 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* ── FCM Live Notification Banner on Dashboard ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl text-white shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white">
-            <Bell size={20} />
+      {/* ── FCM Live Notification Banner on Dashboard (Super Admin & Admin Only) ── */}
+      {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin') && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl text-white shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white">
+              <Bell size={20} />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm flex items-center gap-2">
+                FCM Live Push Notification (Admin Test)
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                  fcmStatus === 'granted' ? 'bg-green-400 text-green-950' : 'bg-amber-300 text-amber-950'
+                }`}>
+                  {fcmStatus === 'granted' ? 'Active' : fcmStatus}
+                </span>
+              </h4>
+              <p className="text-xs text-blue-100">Live test notification direct device pe bhej kar check karein</p>
+            </div>
           </div>
-          <div>
-            <h4 className="font-bold text-sm flex items-center gap-2">
-              FCM Live Push Notification
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                fcmStatus === 'granted' ? 'bg-green-400 text-green-950' : 'bg-amber-300 text-amber-950'
-              }`}>
-                {fcmStatus === 'granted' ? 'Active' : fcmStatus}
-              </span>
-            </h4>
-            <p className="text-xs text-blue-100">Live test notification direct device pe bhej kar check karein</p>
-          </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={triggerTestNotification}
-          className="px-4 py-2 bg-white hover:bg-gray-100 active:bg-gray-200 text-blue-600 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 self-stretch sm:self-auto justify-center"
-        >
-          <Zap size={14} className="text-amber-500 fill-amber-500" />
-          {fcmTestSent ? 'Notification Sent! ✓' : 'Send Test Push Notification'}
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={triggerTestNotification}
+            className="px-4 py-2 bg-white hover:bg-gray-100 active:bg-gray-200 text-blue-600 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 self-stretch sm:self-auto justify-center"
+          >
+            <Zap size={14} className="text-amber-500 fill-amber-500" />
+            {fcmTestSent ? 'Notification Sent! ✓' : 'Send Test Push Notification'}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {kpiCards.map(({ label, value, icon: Icon, color }) => (
