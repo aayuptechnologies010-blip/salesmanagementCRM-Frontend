@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, Users, UserPlus, UserCheck, Target, ArrowUpRight, Clock } from 'lucide-react';
+import { TrendingUp, Users, UserPlus, UserCheck, Target, ArrowUpRight, Clock, Bell, Zap } from 'lucide-react';
 import Card from '../components/shared/Card';
 import StatusBadge from '../components/shared/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
+import { requestNotificationPermission } from '../utils/firebase';
 
 const COLORS = ['#E5E7EB', '#DBEAFE', '#3B82F6', '#93C5FD', '#60A5FA', '#1D4ED8'];
 
@@ -14,6 +15,13 @@ export default function Dashboard() {
 
   const [stats, setStats] = useState(null);
   const [revenueData, setRevenueData] = useState([]);
+  const [fcmStatus, setFcmStatus] = useState(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'default';
+  });
+  const [fcmTestSent, setFcmTestSent] = useState(false);
 
   useEffect(() => {
     api.get('/dashboard').then(data => setStats(data)).catch(() => {});
@@ -45,6 +53,28 @@ export default function Dashboard() {
     }).catch(() => {});
   }, []);
 
+  const triggerTestNotification = async () => {
+    if (!('Notification' in window)) {
+      alert('Browser desktop notifications support nahi karta.');
+      return;
+    }
+    if (Notification.permission !== 'granted') {
+      const token = await requestNotificationPermission();
+      setFcmStatus(Notification.permission);
+    }
+    if (Notification.permission === 'granted') {
+      new Notification('🔥 Sales CRM Live Notification', {
+        body: `Hello ${currentUser?.name || 'User'}! FCM Live Push Notification is working successfully on this device.`,
+        icon: '/logo.png',
+        badge: '/logo.png'
+      });
+      setFcmTestSent(true);
+      setTimeout(() => setFcmTestSent(false), 3000);
+    } else {
+      alert('Notification allow karne ke liye browser URL bar me allow karein.');
+    }
+  };
+
   if (!stats) {
     return (
       <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
@@ -67,6 +97,35 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* ── FCM Live Notification Banner on Dashboard ── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl text-white shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white">
+            <Bell size={20} />
+          </div>
+          <div>
+            <h4 className="font-bold text-sm flex items-center gap-2">
+              FCM Live Push Notification
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                fcmStatus === 'granted' ? 'bg-green-400 text-green-950' : 'bg-amber-300 text-amber-950'
+              }`}>
+                {fcmStatus === 'granted' ? 'Active' : fcmStatus}
+              </span>
+            </h4>
+            <p className="text-xs text-blue-100">Live test notification direct device pe bhej kar check karein</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={triggerTestNotification}
+          className="px-4 py-2 bg-white hover:bg-gray-100 active:bg-gray-200 text-blue-600 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 self-stretch sm:self-auto justify-center"
+        >
+          <Zap size={14} className="text-amber-500 fill-amber-500" />
+          {fcmTestSent ? 'Notification Sent! ✓' : 'Send Test Push Notification'}
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {kpiCards.map(({ label, value, icon: Icon, color }) => (
           <Card key={label} className="p-5">
