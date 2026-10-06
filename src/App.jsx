@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import AppLayout from './components/layout/AppLayout';
 import socket from './utils/socket';
+import { api } from './utils/api';
 import { onMessageListener } from './utils/firebase';
 import Login from './pages/auth/Login';
 import ForgotPassword from './pages/auth/ForgotPassword';
