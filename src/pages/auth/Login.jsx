@@ -105,11 +105,11 @@ export default function Login() {
     requestNotificationPermission().catch(() => {});
     if (deferredPrompt) {
       deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
+      const choice = await deferredPrompt.userChoice;
+      if (choice?.outcome === 'accepted') {
+        setIsInstallable(false);
+      }
       setDeferredPrompt(null);
-      setIsInstallable(false);
-    } else {
-      setShowIosGuide(true);
     }
   };
 
@@ -213,7 +213,6 @@ export default function Login() {
               <PrimaryButton type="submit" loading={loggingIn} className="w-full justify-center">Sign In</PrimaryButton>
             </form>
           )}
-
           {showInstallBtn && !waitingApproval && (
             <div className="mt-6 pt-5 border-t border-gray-100">
               <button type="button" onClick={handleInstallClick}
@@ -221,39 +220,12 @@ export default function Login() {
                 <Download size={16} /> Download CRM App
               </button>
               <p className="text-center text-[11px] text-gray-400 mt-2">
-                Install as a mobile app for offline access and faster loading.
+                Install as a standalone app for fast direct access.
               </p>
             </div>
           )}
         </div>
       </div>
-
-      <Modal isOpen={showIosGuide} onClose={() => setShowIosGuide(false)} title="Install CRM Web App" size="sm">
-        <div className="space-y-4 py-2">
-          <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl p-3.5 text-blue-700">
-            <Smartphone className="flex-shrink-0" size={20} />
-            <p className="text-sm font-medium text-left">Follow these simple steps to install the app on your iPhone/Safari:</p>
-          </div>
-          <ol className="space-y-3.5 text-sm text-gray-600 pl-2 text-left">
-            <li className="flex items-start gap-2.5">
-              <span className="flex items-center justify-center bg-blue-100 text-blue-600 font-bold rounded-full w-5 h-5 text-xs mt-0.5 flex-shrink-0">1</span>
-              <span>Safari browser में नीचे की तरफ <strong>Share 📤</strong> बटन पर टैप करें।</span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="flex items-center justify-center bg-blue-100 text-blue-600 font-bold rounded-full w-5 h-5 text-xs mt-0.5 flex-shrink-0">2</span>
-              <span><strong>"Add to Home Screen"</strong> पर क्लिक करें।</span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="flex items-center justify-center bg-blue-100 text-blue-600 font-bold rounded-full w-5 h-5 text-xs mt-0.5 flex-shrink-0">3</span>
-              <span>ऊपर दाईं ओर <strong>"Add"</strong> पर टैप करें।</span>
-            </li>
-          </ol>
-          <button onClick={() => setShowIosGuide(false)}
-            className="w-full justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 px-4 rounded-xl text-sm transition-colors">
-            Okay, Got it!
-          </button>
-        </div>
-      </Modal>
     </div>
   );
 }
