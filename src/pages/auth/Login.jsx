@@ -18,25 +18,18 @@ export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
-  const [waitingApproval, setWaitingApproval] = useState(false);
-  const [pendingCreds, setPendingCreds] = useState(null);
   const navigate = useNavigate();
   const { login, currentUser } = useAuth();
 
   // PWA states
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstallable, setIsInstallable] = useState(false);
-  const [showIosGuide, setShowIosGuide] = useState(false);
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const showInstallBtn = isInstallable || (isMobile && !isStandalone);
 
   useEffect(() => {
     if (currentUser) navigate('/dashboard', { replace: true });
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('reason') === 'session_expired') {
-      setError('Aapka session kisi aur device pe login hone ke karan band ho gaya.');
-    }
   }, [currentUser, navigate]);
 
   // PWA install prompt
@@ -46,32 +39,6 @@ export default function Login() {
     if (isStandalone) setIsInstallable(false);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
-
-  // Socket: Device B listens for approve/reject
-  useEffect(() => {
-    const onApproved = async () => {
-      setWaitingApproval(false);
-      if (!pendingCreds) return;
-      const result = await login(pendingCreds.email, pendingCreds.password);
-      setPendingCreds(null);
-      if (result.success) navigate('/dashboard');
-      else setError(result.message || 'Login failed.');
-    };
-
-    const onRejected = () => {
-      setWaitingApproval(false);
-      setPendingCreds(null);
-      setError('Login request doosre device se reject kar diya gaya.');
-    };
-
-    socket.on('login_approved', onApproved);
-    socket.on('login_rejected', onRejected);
-
-    return () => {
-      socket.off('login_approved', onApproved);
-      socket.off('login_rejected', onRejected);
-    };
-  }, [pendingCreds]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -158,24 +125,7 @@ export default function Login() {
             <p className="text-sm text-gray-500 mt-1">Sign in to your account to continue</p>
           </div>
 
-          {/* Waiting for approval UI */}
-          {waitingApproval ? (
-            <div className="space-y-4">
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <div className="w-14 h-14 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
-                <p className="text-sm font-semibold text-gray-800">Login approval ka wait kar rahe hain...</p>
-                <p className="text-xs text-gray-400 max-w-xs">
-                  <strong>{pendingCreds?.email}</strong> pehle se kisi aur device pe logged in hai.<br />
-                  Us device pe ek notification bheja gaya hai — wahan se confirm karo.
-                </p>
-              </div>
-              <button onClick={cancelWaiting}
-                className="w-full py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors">
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
               <Input label="Email Address" type="email" placeholder="Enter your email address"
                 value={form.email}
                 onChange={e => { setForm({ ...form, email: e.target.value }); setError(''); }}
@@ -212,8 +162,8 @@ export default function Login() {
 
               <PrimaryButton type="submit" loading={loggingIn} className="w-full justify-center">Sign In</PrimaryButton>
             </form>
-          )}
-          {showInstallBtn && !waitingApproval && (
+
+          {showInstallBtn && (
             <div className="mt-6 pt-5 border-t border-gray-100">
               <button type="button" onClick={handleInstallClick}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl px-4 py-3 text-sm font-semibold shadow-md transition-all">
