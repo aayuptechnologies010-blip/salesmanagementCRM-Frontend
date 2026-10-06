@@ -36,35 +36,65 @@ export default function App() {
     if (!socket.connected) socket.connect();
     socket.emit('register', currentUser.email);
 
-    // Sync FCM token with backend
-    const savedToken = localStorage.getItem('fcm_token');
-    if (savedToken) {
-      api.patch('/auth/fcm-token', { token: savedToken }).catch(() => {});
+    // Request notification permission and sync FCM token with backend
+    if ('Notification' in window && Notification.permission === 'default') {
+      import('./utils/firebase').then(({ requestNotificationPermission }) => {
+        requestNotificationPermission().then(token => {
+          if (token) {
+            api.patch('/auth/fcm-token', { token }).catch(() => {});
+          }
+        });
+      });
+    } else {
+      const savedToken = localStorage.getItem('fcm_token');
+      if (savedToken) {
+        api.patch('/auth/fcm-token', { token: savedToken }).catch(() => {});
+      }
     }
+
+    // Helper function to safely display notification on PWA (Mobile/Desktop)
+    const showPushNotification = async (title, body, tag = 'crm-notify') => {
+      try {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+        // Try ServiceWorkerRegistration.showNotification first (required on Android/PWA)
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && reg.showNotification) {
+            await reg.showNotification(title, {
+              body,
+              icon: '/logo.png',
+              badge: '/logo.png',
+              vibrate: [200, 100, 200],
+              tag: tag,
+              renotify: true,
+              data: { url: '/dashboard' }
+            });
+            return;
+          }
+        }
+
+        // Fallback for desktop window notification
+        new Notification(title, {
+          body,
+          icon: '/logo.png',
+          badge: '/logo.png',
+          tag: tag
+        });
+      } catch (e) {
+        console.error('Notification display error:', e);
+      }
+    };
 
     // Live Lead Assignment Notification Event
     const handleLeadAssigned = (data) => {
       // Check if this notification is for the current logged-in user or an Admin
       const isTargetUser = currentUser.name === data.assignedTo || currentUser.email === data.assignedTo;
-      const isAdmin = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
 
       if (isTargetUser) {
         const title = `🎯 Nayi Lead Assign Huyi! (${data.count} Leads)`;
         const body = `${data.assignedBy} ne aapko ${data.count} naye lead(s) assign kiye hain: ${data.leadNames?.join(', ')}`;
-
-        // Native Browser / Desktop Push Notification
-        if ('Notification' in window && Notification.permission === 'granted') {
-          try {
-            new Notification(title, {
-              body,
-              icon: '/logo.png',
-              badge: '/logo.png',
-              tag: 'lead-assignment',
-            });
-          } catch (e) {
-            console.error('Error displaying notification:', e);
-          }
-        }
+        showPushNotification(title, body, 'lead-assignment');
       }
     };
 
@@ -75,13 +105,7 @@ export default function App() {
     onMessageListener((payload) => {
       const title = payload.notification?.title || payload.data?.title || 'CRM Notification';
       const body = payload.notification?.body || payload.data?.body || 'New CRM update';
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, {
-          body,
-          icon: '/logo.png',
-          badge: '/logo.png',
-        });
-      }
+      showPushNotification(title, body, 'fcm-push');
     }).then(unsub => {
       if (typeof unsub === 'function') unsubscribeFCM = unsub;
     });

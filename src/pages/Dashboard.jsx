@@ -55,7 +55,7 @@ export default function Dashboard() {
 
   const triggerTestNotification = async () => {
     if (!('Notification' in window)) {
-      alert('Browser desktop notifications support nahi karta.');
+      alert('Browser notifications support nahi karta.');
       return;
     }
     if (Notification.permission !== 'granted') {
@@ -63,15 +63,35 @@ export default function Dashboard() {
       setFcmStatus(Notification.permission);
     }
     if (Notification.permission === 'granted') {
-      new Notification('🔥 Sales CRM Live Notification', {
-        body: `Hello ${currentUser?.name || 'User'}! FCM Live Push Notification is working successfully on this device.`,
-        icon: '/logo.png',
-        badge: '/logo.png'
-      });
-      setFcmTestSent(true);
-      setTimeout(() => setFcmTestSent(false), 3000);
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && reg.showNotification) {
+            await reg.showNotification('🔥 Sales CRM Live Notification', {
+              body: `Hello ${currentUser?.name || 'User'}! FCM Live Push Notification is working successfully on this PWA / device.`,
+              icon: '/logo.png',
+              badge: '/logo.png',
+              vibrate: [200, 100, 200],
+              tag: 'test-fcm-push',
+              renotify: true
+            });
+            setFcmTestSent(true);
+            setTimeout(() => setFcmTestSent(false), 3000);
+            return;
+          }
+        }
+        new Notification('🔥 Sales CRM Live Notification', {
+          body: `Hello ${currentUser?.name || 'User'}! FCM Live Push Notification is working successfully on this device.`,
+          icon: '/logo.png',
+          badge: '/logo.png'
+        });
+        setFcmTestSent(true);
+        setTimeout(() => setFcmTestSent(false), 3000);
+      } catch (err) {
+        console.error('Test notification failed:', err);
+      }
     } else {
-      alert('Notification allow karne ke liye browser URL bar me allow karein.');
+      alert('Notification permission allow nahi hai. Browser/PWA App Settings me Notification Allow karein.');
     }
   };
 
