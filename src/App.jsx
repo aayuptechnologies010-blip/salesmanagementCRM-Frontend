@@ -29,7 +29,48 @@ export default function App() {
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    let unsubscribe = () => {};
+    if (!currentUser) return;
+
+    // Connect socket for real-time events
+    if (!socket.connected) socket.connect();
+    socket.emit('register', currentUser.email);
+
+    // Sync FCM token with backend
+    const savedToken = localStorage.getItem('fcm_token');
+    if (savedToken) {
+      api.patch('/auth/fcm-token', { token: savedToken }).catch(() => {});
+    }
+
+    // Live Lead Assignment Notification Event
+    const handleLeadAssigned = (data) => {
+      // Check if this notification is for the current logged-in user or an Admin
+      const isTargetUser = currentUser.name === data.assignedTo || currentUser.email === data.assignedTo;
+      const isAdmin = currentUser.role === 'Super Admin' || currentUser.role === 'Admin';
+
+      if (isTargetUser) {
+        const title = `🎯 Nayi Lead Assign Huyi! (${data.count} Leads)`;
+        const body = `${data.assignedBy} ne aapko ${data.count} naye lead(s) assign kiye hain: ${data.leadNames?.join(', ')}`;
+
+        // Native Browser / Desktop Push Notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification(title, {
+              body,
+              icon: '/logo.png',
+              badge: '/logo.png',
+              tag: 'lead-assignment',
+            });
+          } catch (e) {
+            console.error('Error displaying notification:', e);
+          }
+        }
+      }
+    };
+
+    socket.on('lead_assigned', handleLeadAssigned);
+
+    // FCM foreground push listener
+    let unsubscribeFCM = () => {};
     onMessageListener((payload) => {
       const title = payload.notification?.title || payload.data?.title || 'CRM Notification';
       const body = payload.notification?.body || payload.data?.body || 'New CRM update';
@@ -37,13 +78,17 @@ export default function App() {
         new Notification(title, {
           body,
           icon: '/logo.png',
+          badge: '/logo.png',
         });
       }
     }).then(unsub => {
-      if (typeof unsub === 'function') unsubscribe = unsub;
+      if (typeof unsub === 'function') unsubscribeFCM = unsub;
     });
 
-    return () => unsubscribe();
+    return () => {
+      socket.off('lead_assigned', handleLeadAssigned);
+      unsubscribeFCM();
+    };
   }, [currentUser]);
 
   return (
