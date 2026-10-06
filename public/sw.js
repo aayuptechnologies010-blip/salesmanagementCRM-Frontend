@@ -22,11 +22,51 @@ messaging.onBackgroundMessage((payload) => {
     body: payload.notification?.body || payload.data?.body || 'New CRM update',
     icon: '/logo.png',
     badge: '/logo.png',
-    data: payload.data || {},
+    data: payload.data || { url: '/dashboard' },
     vibrate: [200, 100, 200],
     requireInteraction: true
   };
   self.registration.showNotification(title, options);
+});
+
+// Standard Push Event listener for Web Push
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  try {
+    const payload = event.data.json();
+    const title = payload.notification?.title || payload.title || payload.data?.title || 'CRM Notification';
+    const body = payload.notification?.body || payload.body || payload.data?.body || 'New update in CRM';
+    const options = {
+      body,
+      icon: '/logo.png',
+      badge: '/logo.png',
+      data: payload.data || { url: '/dashboard' },
+      vibrate: [200, 100, 200],
+      requireInteraction: true
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch {
+    const text = event.data.text();
+    event.waitUntil(self.registration.showNotification('CRM Notification', {
+      body: text,
+      icon: '/logo.png',
+      badge: '/logo.png'
+    }));
+  }
+});
+
+// Allow app client to trigger notification directly via service worker postMessage
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, options = {} } = event.data;
+    self.registration.showNotification(title || 'CRM Alert', {
+      body: body || '',
+      icon: '/logo.png',
+      badge: '/logo.png',
+      vibrate: [200, 100, 200],
+      ...options
+    });
+  }
 });
 
 // PWA Service Worker lifecycle

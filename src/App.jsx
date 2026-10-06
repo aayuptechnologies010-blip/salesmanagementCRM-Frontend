@@ -55,10 +55,25 @@ export default function App() {
     // Helper function to safely display notification on PWA (Mobile/Desktop)
     const showPushNotification = async (title, body, tag = 'crm-notify') => {
       try {
-        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        if (!('Notification' in window)) return;
+        
+        // If permission is not granted, try to ask
+        if (Notification.permission === 'default') {
+          await Notification.requestPermission();
+        }
+        if (Notification.permission !== 'granted') return;
 
-        // Try ServiceWorkerRegistration.showNotification first (required on Android/PWA)
+        // Try active ServiceWorker controller or ready registration (Required for Standalone PWA)
         if ('serviceWorker' in navigator) {
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+              type: 'SHOW_NOTIFICATION',
+              title,
+              body,
+              options: { tag, renotify: true, data: { url: '/dashboard' } }
+            });
+            return;
+          }
           const reg = await navigator.serviceWorker.ready;
           if (reg && reg.showNotification) {
             await reg.showNotification(title, {
@@ -74,7 +89,7 @@ export default function App() {
           }
         }
 
-        // Fallback for desktop window notification
+        // Fallback for regular desktop window notification
         new Notification(title, {
           body,
           icon: '/logo.png',
