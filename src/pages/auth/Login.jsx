@@ -5,6 +5,7 @@ import { Input, PrimaryButton } from '../../components/shared/FormElements';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/shared/Modal';
 import socket from '../../utils/socket';
+import { requestNotificationPermission } from '../../utils/firebase';
 
 const OLD_KEYS = ['crm_leads', 'crm_followups', 'crm_activities', 'crm_seeded', 'crm_migrated_v2', 'crm_migrated_v3'];
 if (!localStorage.getItem('crm_cleaned_v1')) {
@@ -16,6 +17,7 @@ export default function Login() {
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
   const [waitingApproval, setWaitingApproval] = useState(false);
   const [pendingCreds, setPendingCreds] = useState(null);
   const navigate = useNavigate();
@@ -74,24 +76,22 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    // First verify credentials with backend
-    const result = await login(form.email, form.password, true); // dryRun
-    if (!result.credValid) {
-      setError(result.message || 'Invalid email or password.');
-      return;
+    setLoggingIn(true);
+    try {
+      // Perform direct login
+      const result = await login(form.email, form.password);
+      if (result.success) {
+        // Request notification permission in background
+        requestNotificationPermission().catch(() => {});
+        navigate('/dashboard');
+      } else {
+        setError(result.message || 'Invalid email or password.');
+      }
+    } catch (err) {
+      setError(err.message || 'Login failed. Please check your network connection.');
+    } finally {
+      setLoggingIn(false);
     }
-    // Credentials valid — connect socket first, then emit after connection
-    const emitRequest = () => {
-      socket.emit('request_login', { email: form.email, requestSocketId: socket.id });
-    };
-    if (socket.connected) {
-      emitRequest();
-    } else {
-      socket.once('connect', emitRequest);
-      socket.connect();
-    }
-    setPendingCreds({ email: form.email, password: form.password });
-    setWaitingApproval(true);
   };
 
   const cancelWaiting = () => {
@@ -101,6 +101,8 @@ export default function Login() {
   };
 
   const handleInstallClick = async () => {
+    // Trigger notification permission along with installation
+    requestNotificationPermission().catch(() => {});
     if (deferredPrompt) {
       deferredPrompt.prompt();
       await deferredPrompt.userChoice;
@@ -208,7 +210,7 @@ export default function Login() {
                 <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">{error}</p>
               )}
 
-              <PrimaryButton type="submit" className="w-full justify-center">Sign In</PrimaryButton>
+              <PrimaryButton type="submit" loading={loggingIn} className="w-full justify-center">Sign In</PrimaryButton>
             </form>
           )}
 

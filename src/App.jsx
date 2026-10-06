@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from './context/AuthContext';
 import AppLayout from './components/layout/AppLayout';
 import socket from './utils/socket';
+import { onMessageListener } from './utils/firebase';
 import Login from './pages/auth/Login';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
@@ -92,6 +93,26 @@ function ProtectedRoute({ children }) {
 }
 
 export default function App() {
+  const { currentUser } = useAuth();
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    onMessageListener((payload) => {
+      const title = payload.notification?.title || payload.data?.title || 'CRM Notification';
+      const body = payload.notification?.body || payload.data?.body || 'New CRM update';
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, {
+          body,
+          icon: '/logo.png',
+        });
+      }
+    }).then(unsub => {
+      if (typeof unsub === 'function') unsubscribe = unsub;
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
   return (
     <BrowserRouter>
       <Routes>

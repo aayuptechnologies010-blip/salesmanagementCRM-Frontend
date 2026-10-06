@@ -82,13 +82,13 @@ export default function LeadDetails() {
     setNotes(updated);
   };
 
-  const handleSchedule = () => {
+  const handleSchedule = async () => {
     if (!fuDate) return;
-    addFollowUp({
+    await addFollowUp({
       lead: lead.name, company: lead.company, date: fuDate, time: fuTime,
       assignedTo: fuAssign || lead.assignedTo || '', priority: 'Medium', status: 'Pending',
     }, currentUser?.name);
-    updateLead(lead.id, { ...lead, followUpDate: fuDate }, currentUser?.name);
+    await updateLead(lead._id || lead.id, { ...lead, followUpDate: fuDate }, currentUser?.name);
     setScheduled(true);
     setTimeout(() => setScheduled(false), 2500);
   };

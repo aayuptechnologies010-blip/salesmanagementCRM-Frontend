@@ -181,9 +181,9 @@ export default function AssignLeads() {
     return matchesSearch && matchesAssignment && matchesSource && matchesLeadType;
   });
 
-  const handleBulkAssign = () => {
+  const handleBulkAssign = async () => {
     if (!assignTo) return;
-    assignLead(selected, assignTo, followUpDate);
+    await assignLead(selected, assignTo, followUpDate);
     setSelected([]);
     setAssignTo('');
     setFollowUpDate('');
@@ -191,7 +191,7 @@ export default function AssignLeads() {
     setModal(null);
   };
 
-  const handleRoundRobin = () => {
+  const handleRoundRobin = async () => {
     const execs = teamMembers.filter(m => m.role === 'Sales Executive');
     if (execs.length === 0) return;
     const unassignedIds = unassigned.map(l => l.id);
@@ -201,7 +201,7 @@ export default function AssignLeads() {
       if (!assignments[exec]) assignments[exec] = [];
       assignments[exec].push(id);
     });
-    Object.entries(assignments).forEach(([exec, ids]) => assignLead(ids, exec));
+    await Promise.all(Object.entries(assignments).map(([exec, ids]) => assignLead(ids, exec)));
     setModal(null);
   };
 

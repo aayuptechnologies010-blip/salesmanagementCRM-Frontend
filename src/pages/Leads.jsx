@@ -52,22 +52,22 @@ export default function Leads() {
   const openAdd  = () => { setForm(emptyForm); setEditId(null); setModal('form'); };
   const openEdit = (lead) => { setForm({ ...lead }); setEditId(lead.id); setModal('form'); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) return;
-    if (editId) updateLead(editId, form, currentUser?.name);
-    else addLead(form, currentUser?.name);
+    if (editId) await updateLead(editId, form, currentUser?.name);
+    else await addLead(form, currentUser?.name);
     setModal(null);
   };
 
-  const handleDelete = () => {
-    deleteLead(selected);
+  const handleDelete = async () => {
+    await deleteLead(selected);
     setSelected([]);
     setModal(null);
   };
 
-  const handleAssign = () => {
+  const handleAssign = async () => {
     if (!assignTo) return;
-    assignLead(selected, assignTo, '', currentUser?.name);
+    await assignLead(selected, assignTo, '', currentUser?.name);
     setSelected([]);
     setAssignTo('');
     setModal(null);

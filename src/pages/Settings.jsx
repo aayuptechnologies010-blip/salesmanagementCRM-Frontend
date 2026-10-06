@@ -91,8 +91,8 @@ export default function Settings() {
     reader.readAsDataURL(file);
   };
 
-  const handleSave = () => {
-    updateProfile(form);
+  const handleSave = async () => {
+    await updateProfile(form);
     setEditMode(false);
   };
 

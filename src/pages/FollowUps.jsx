@@ -85,15 +85,15 @@ export default function FollowUps() {
     setModal('form');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.lead.trim()) return;
-    if (editId) updateFollowUp(editId, form);
-    else addFollowUp(form);
+    if (editId) await updateFollowUp(editId, form);
+    else await addFollowUp(form);
     setModal(null);
   };
 
-  const toggleDone = (f) => {
-    updateFollowUp(f.id || f._id, { ...f, status: f.status === 'Done' ? 'Pending' : 'Done' });
+  const toggleDone = async (f) => {
+    await updateFollowUp(f.id || f._id, { ...f, status: f.status === 'Done' ? 'Pending' : 'Done' });
   };
 
   return (

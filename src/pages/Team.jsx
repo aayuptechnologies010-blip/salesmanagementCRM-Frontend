@@ -48,19 +48,19 @@ export default function Team() {
 const openAdd = () => { setForm(emptyForm); setEditId(null); setFormError(''); setModal('form'); };
   const openEdit = (m) => { setForm({ ...m, password: '' }); setEditId(m.id || m._id); setFormError(''); setModal('form'); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim() || !form.email.trim()) { setFormError('Name and Email are required.'); return; }
     if (!editId && !form.password.trim()) { setFormError('Password is required for new members.'); return; }
     const duplicate = allUsers.find(u => u.email.toLowerCase() === form.email.toLowerCase() && (u.id !== editId && u._id !== editId));
     if (duplicate) { setFormError('This email is already registered.'); return; }
-    if (editId) updateUser(editId, form);
-    else addUser(form);
+    if (editId) await updateUser(editId, form);
+    else await addUser(form);
     setModal(null);
     setFormError('');
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to remove this member?')) deleteUser(id);
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to remove this member?')) await deleteUser(id);
   };
 
   const openMemberLeads = (member) => {
