@@ -17,6 +17,7 @@ const emptyForm = {
   course: '', branch: '', college: '', year: '', trainingType: '',
   projectType: '', techStack: '', timeline: '', value: '',
   contactPerson: '', pinCode: '', typeOfCare: '', hospitalZone: '', tpaName: '',
+  alternatePhone: '', designation: '', requirement: '', budget: '', location: '', industry: '', companySize: '', priority: '', lostReason: ''
 };
 
 export default function Leads() {
@@ -147,7 +148,7 @@ export default function Leads() {
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
             className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
             <option value="">All Status</option>
-            {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Interested', 'Won', 'Lost', 'No Response'].map(s => <option key={s}>{s}</option>)}
+            {['New', 'Assigned', 'Contacted', 'Interested', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Not Interested', 'Invalid', 'Duplicate', 'No Response', 'Lost'].map(s => <option key={s}>{s}</option>)}
           </select>
           <select value={filterLeadType} onChange={e => setFilterLeadType(e.target.value)}
             className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
@@ -203,18 +204,36 @@ export default function Leads() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="Full Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Enter full name" />
           <Input label="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Enter phone number" />
+          <Input label="Alternate Phone" value={form.alternatePhone || ''} onChange={e => setForm({ ...form, alternatePhone: e.target.value })} placeholder="Enter alternate phone" />
           <Input label="Email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Enter email address" />
+          
+          <Select label="Priority" value={form.priority || ''} onChange={e => setForm({ ...form, priority: e.target.value })}>
+            <option value="">Select Priority</option>
+            {['Hot', 'Warm', 'Cold'].map(s => <option key={s}>{s}</option>)}
+          </Select>
+
           <Select label="Lead Type" value={form.leadType || 'Client Project'} onChange={e => setForm({ ...form, leadType: e.target.value })}>
             <option value="Client Project">Client Project</option>
             <option value="Student Training">Student Training</option>
           </Select>
           <Select label="Source" value={form.source} onChange={e => setForm({ ...form, source: e.target.value })}>
             <option value="">Select source</option>
-            {['Website', 'Referral', 'LinkedIn', 'Cold Call', 'Email Campaign', 'Conference'].map(s => <option key={s}>{s}</option>)}
+            {['Website', 'Facebook', 'Instagram', 'Google Ads', 'WhatsApp', 'Referral', 'Cold Call', 'Walk-in', 'Manual Entry', 'Excel/CSV Import', 'LinkedIn', 'Email Campaign', 'Conference', 'Other'].map(s => <option key={s}>{s}</option>)}
           </Select>
           <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-            {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Interested', 'Won', 'Lost', 'No Response'].map(s => <option key={s}>{s}</option>)}
+            {['New', 'Assigned', 'Contacted', 'Interested', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Not Interested', 'Invalid', 'Duplicate', 'No Response', 'Lost'].map(s => <option key={s}>{s}</option>)}
           </Select>
+
+          {form.status === 'Lost' && (
+            <Input label="Lost Reason" value={form.lostReason || ''} onChange={e => setForm({ ...form, lostReason: e.target.value })} placeholder="Enter reason for lost lead" />
+          )}
+
+          <Input label="Designation" value={form.designation || ''} onChange={e => setForm({ ...form, designation: e.target.value })} placeholder="Enter designation" />
+          <Input label="Requirement" value={form.requirement || ''} onChange={e => setForm({ ...form, requirement: e.target.value })} placeholder="Enter specific requirement" />
+          <Input label="Budget" value={form.budget || ''} onChange={e => setForm({ ...form, budget: e.target.value })} placeholder="Enter budget" />
+          <Input label="Location" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Enter location" />
+          <Input label="Industry" value={form.industry || ''} onChange={e => setForm({ ...form, industry: e.target.value })} placeholder="Enter industry" />
+          <Input label="Company Size" value={form.companySize || ''} onChange={e => setForm({ ...form, companySize: e.target.value })} placeholder="Enter company size" />
 
           {form.leadType === 'Student Training' && (
             <>

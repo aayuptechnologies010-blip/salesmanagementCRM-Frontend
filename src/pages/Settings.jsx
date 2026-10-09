@@ -7,9 +7,9 @@ import { api } from '../utils/api';
 import { requestNotificationPermission } from '../utils/firebase';
 
 const allTabs = [
-  { id: 'company', label: 'Company Profile', icon: Building2, roles: ['Super Admin', 'Admin', 'Sales Executive'] },
-  { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['Super Admin', 'Admin', 'Sales Executive'] },
-  { id: 'permissions', label: 'Role Permissions', icon: Shield, roles: ['Super Admin'] },
+  { id: 'company', label: 'Company Profile', icon: Building2, roles: ['Super Admin', 'Admin', 'Manager', 'Team Leader', 'Sales Executive', 'Sales Employee', 'Telecaller', 'Accountant', 'Support'] },
+  { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['Super Admin', 'Admin', 'Manager', 'Team Leader', 'Sales Executive', 'Sales Employee', 'Telecaller', 'Accountant', 'Support'] },
+  { id: 'permissions', label: 'Role Permissions', icon: Shield, roles: ['Super Admin', 'Admin'] },
 ];
 
 // Notifications per role
@@ -35,15 +35,21 @@ const notifsByRole = {
   ],
 };
 
-const roles = ['Super Admin', 'Admin / Sales Manager', 'Sales Executive'];
+const roles = ['Super Admin', 'Admin', 'Manager', 'Team Leader', 'Sales Executive', 'Sales Employee', 'Telecaller', 'Accountant', 'Support'];
 const permissions = [
   'View Dashboard', 'Manage Leads', 'Assign Leads', 'Delete Leads',
-  'View Reports', 'Manage Team', 'Export Data', 'Manage Settings',
+  'View Reports', 'Manage Team', 'Export Data', 'Manage Settings', 'Manage Invoices'
 ];
 const defaultPerms = {
   'Super Admin': new Set(permissions),
-  'Admin / Sales Manager': new Set(['View Dashboard', 'Manage Leads', 'Assign Leads', 'View Reports', 'Manage Team', 'Export Data']),
+  'Admin': new Set(permissions),
+  'Manager': new Set(['View Dashboard', 'Manage Leads', 'Assign Leads', 'View Reports', 'Manage Team', 'Export Data']),
+  'Team Leader': new Set(['View Dashboard', 'Manage Leads', 'Assign Leads', 'View Reports']),
   'Sales Executive': new Set(['View Dashboard', 'Manage Leads']),
+  'Sales Employee': new Set(['View Dashboard', 'Manage Leads']),
+  'Telecaller': new Set(['View Dashboard', 'Manage Leads']),
+  'Accountant': new Set(['View Dashboard', 'Manage Invoices']),
+  'Support': new Set(['View Dashboard', 'Manage Leads']),
 };
 
 export default function Settings() {

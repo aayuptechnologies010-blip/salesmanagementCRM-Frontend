@@ -20,6 +20,8 @@ import Pipeline from './pages/Pipeline';
 import Calendar from './pages/Calendar';
 import Invoices from './pages/Invoices';
 import InvoiceDetail from './pages/InvoiceDetail';
+import Opportunities from './pages/Opportunities';
+import Customers from './pages/Customers';
 
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth();
@@ -148,6 +150,8 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/leads" element={<Leads />} />
           <Route path="/leads/:id" element={<LeadDetails />} />
+          <Route path="/opportunities" element={<Opportunities />} />
+          <Route path="/customers" element={<Customers />} />
           <Route path="/assign" element={<AssignLeads />} />
           <Route path="/followups" element={<FollowUps />} />
           <Route path="/team" element={<Team />} />

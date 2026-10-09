@@ -1,8 +1,24 @@
-import { Phone, X, MessageCircle } from 'lucide-react';
+import { Phone, X, MessageCircle, Shield } from 'lucide-react';
+import { useState } from 'react';
+import { api } from '../../utils/api';
 
 export default function CallPanel({ lead, onClose }) {
+  const [calling, setCalling] = useState(false);
   const phone = lead?.phone || '';
   const clean = phone.replace(/\D/g, '');
+
+  const handleMaskedCall = async () => {
+    try {
+      setCalling(true);
+      await api.post('/calls/initiate', { leadId: lead._id || lead.id });
+      alert('Call initiated! Please answer your phone.');
+      onClose();
+    } catch (err) {
+      alert(err.message || 'Failed to initiate masked call');
+    } finally {
+      setCalling(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -24,9 +40,16 @@ export default function CallPanel({ lead, onClose }) {
         <div className="px-6 py-6 flex flex-col gap-3">
           {phone ? (
             <>
+              <button onClick={handleMaskedCall} disabled={calling}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl text-sm font-semibold transition-all active:scale-95 shadow-md">
+                <Shield size={16} className={calling ? 'animate-pulse' : ''} />
+                {calling ? 'Connecting...' : 'Secure Masked Call'}
+              </button>
+              
+              {/* Optional: keep standard call for fallback */}
               <a href={`tel:${phone}`}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-green-500 hover:bg-green-600 text-white rounded-2xl text-sm font-semibold transition-all active:scale-95 shadow-md">
-                <Phone size={18} /> Call {phone}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-green-500/10 hover:bg-green-500/20 text-green-600 rounded-2xl text-sm font-semibold transition-all">
+                <Phone size={16} /> Direct Call (Fallback)
               </a>
               <a href={`https://wa.me/${clean}`} target="_blank" rel="noreferrer"
                 className="w-full flex items-center justify-center gap-2 py-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30 rounded-2xl text-sm font-semibold transition-all">

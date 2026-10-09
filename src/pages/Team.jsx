@@ -29,7 +29,7 @@ export default function Team() {
   const [leadStatusFilter, setLeadStatusFilter] = useState('All');
 
   const members = allUsers.filter(u => u.role !== 'Super Admin');
-  const isAdmin = currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin';
+  const isAdmin = ['Super Admin', 'Admin', 'Manager'].includes(currentUser?.role);
 
   // Sales Executive sirf apna profile dekhe
   const visibleMembers = isAdmin ? members : members.filter(m => m._id === currentUser?._id || m.id === currentUser?.id);
@@ -205,7 +205,13 @@ const openAdd = () => { setForm(emptyForm); setEditId(null); setFormError(''); s
                 className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
                 <option value="">All Roles</option>
                 <option value="Admin">Admin</option>
+                <option value="Manager">Manager</option>
+                <option value="Team Leader">Team Leader</option>
                 <option value="Sales Executive">Sales Executive</option>
+                <option value="Sales Employee">Sales Employee</option>
+                <option value="Telecaller">Telecaller</option>
+                <option value="Accountant">Accountant</option>
+                <option value="Support">Support</option>
               </select>
               <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)}
                 className="flex-1 sm:flex-initial border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-200 outline-none">
@@ -347,7 +353,7 @@ const openAdd = () => { setForm(emptyForm); setEditId(null); setFormError(''); s
             <p className="text-xs text-gray-400">Member will use this password to login.</p>
           </div>
           <Select label="Role" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
-            {['Admin', 'Sales Executive'].map(r => <option key={r}>{r}</option>)}
+            {['Admin', 'Manager', 'Team Leader', 'Sales Executive', 'Sales Employee', 'Telecaller', 'Accountant', 'Support'].map(r => <option key={r}>{r}</option>)}
           </Select>
           <Select label="Team" value={form.team} onChange={e => setForm({ ...form, team: e.target.value })}>
             <option value="">Select Team / Enter below</option>

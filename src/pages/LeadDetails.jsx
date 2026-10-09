@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, Building2, Globe, Calendar, Edit2, Plus, CheckCircle, Clock, MessageCircle, DollarSign, User, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Phone, Mail, Building2, Globe, Calendar, Edit2, Plus, CheckCircle, Clock, MessageCircle, DollarSign, User, Tag, Trash2, Target } from 'lucide-react';
 import Card from '../components/shared/Card';
 import StatusBadge from '../components/shared/StatusBadge';
 import { Input, Select, PrimaryButton, SecondaryButton, GhostButton, IconButton } from '../components/shared/FormElements';
@@ -9,15 +9,21 @@ import { useAuth } from '../context/AuthContext';
 import CallPanel from '../components/shared/CallPanel';
 import { api } from '../utils/api';
 
-const statusOptions = ['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'];
+const statusOptions = ['New', 'Assigned', 'Contacted', 'Interested', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Not Interested', 'Invalid', 'Duplicate', 'No Response', 'Lost'];
 
 const statusConfig = {
   New:         { color: 'bg-blue-500',   light: 'bg-blue-50 text-blue-700 border-blue-200' },
+  Assigned:    { color: 'bg-indigo-400', light: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   Contacted:   { color: 'bg-purple-500', light: 'bg-purple-50 text-purple-700 border-purple-200' },
+  Interested:  { color: 'bg-teal-500',   light: 'bg-teal-50 text-teal-700 border-teal-200' },
   Qualified:   { color: 'bg-orange-500', light: 'bg-orange-50 text-orange-700 border-orange-200' },
   Proposal:    { color: 'bg-pink-500',   light: 'bg-pink-50 text-pink-700 border-pink-200' },
   Negotiation: { color: 'bg-indigo-500', light: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   Won:         { color: 'bg-green-500',  light: 'bg-green-50 text-green-700 border-green-200' },
+  'Not Interested': { color: 'bg-red-400',   light: 'bg-red-50 text-red-700 border-red-200' },
+  Invalid:     { color: 'bg-gray-500',   light: 'bg-gray-100 text-gray-700 border-gray-300' },
+  Duplicate:   { color: 'bg-gray-600',   light: 'bg-gray-100 text-gray-800 border-gray-300' },
+  'No Response': { color: 'bg-yellow-500', light: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
   Lost:        { color: 'bg-gray-400',   light: 'bg-gray-100 text-gray-600 border-gray-200' },
 };
 
@@ -38,6 +44,9 @@ export default function LeadDetails() {
   const [fuAssign, setFuAssign]   = useState('');
   const [scheduled, setScheduled] = useState(false);
   const [callOpen, setCallOpen]   = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
   const [leadActivities, setLeadActivities] = useState([]);
 
   useEffect(() => {
@@ -56,11 +65,36 @@ export default function LeadDetails() {
     </div>
   );
 
+  const [lostReason, setLostReason] = useState(lead?.lostReason || '');
+  const [showLostPrompt, setShowLostPrompt] = useState(false);
+
   const handleStatusChange = async (s) => {
+    if (s === 'Lost') {
+      setShowLostPrompt(true);
+      return;
+    }
+    setShowLostPrompt(false);
     setStatus(s);
-    await updateLead(lead._id || lead.id, { status: s }, currentUser?.name);
-    const data = await api.get(`/activities?lead=${encodeURIComponent(lead.name)}&limit=20`);
-    setLeadActivities(data || []);
+    try {
+      await updateLead(lead._id || lead.id, { status: s }, currentUser?.name);
+      const data = await api.get(`/activities?lead=${encodeURIComponent(lead.name)}&limit=20`);
+      setLeadActivities(data || []);
+    } catch(err) {
+      alert(err.message || 'Failed to update status');
+    }
+  };
+
+  const confirmLost = async () => {
+    if (!lostReason.trim()) return alert('Lost Reason is mandatory');
+    setStatus('Lost');
+    setShowLostPrompt(false);
+    try {
+      await updateLead(lead._id || lead.id, { status: 'Lost', lostReason }, currentUser?.name);
+      const data = await api.get(`/activities?lead=${encodeURIComponent(lead.name)}&limit=20`);
+      setLeadActivities(data || []);
+    } catch(err) {
+      alert(err.message || 'Failed to update status');
+    }
   };
 
   const addNote = async () => {
@@ -91,6 +125,31 @@ export default function LeadDetails() {
     await updateLead(lead._id || lead.id, { ...lead, followUpDate: fuDate }, currentUser?.name);
     setScheduled(true);
     setTimeout(() => setScheduled(false), 2500);
+  };
+
+  const convertToOpportunity = async () => {
+    try {
+      await api.post(`/leads/${lead._id || lead.id}/convert-opportunity`);
+      alert('Lead successfully converted to Opportunity!');
+      navigate('/opportunities');
+    } catch (err) {
+      alert(err.message || 'Failed to convert to Opportunity');
+    }
+  };
+
+  const sendEmail = async () => {
+    if (!emailSubject.trim() || !emailMessage.trim()) return alert('Subject and message are required');
+    try {
+      await api.post(`/leads/${lead._id || lead.id}/email`, { subject: emailSubject, message: emailMessage });
+      alert('Email sent successfully!');
+      setEmailOpen(false);
+      setEmailSubject('');
+      setEmailMessage('');
+      const data = await api.get(`/activities?lead=${encodeURIComponent(lead.name)}&limit=20`);
+      setLeadActivities(data || []);
+    } catch (err) {
+      alert(err.message || 'Failed to send email');
+    }
   };
 
   const typeIcon = { edit: Tag, followup: Clock, add: Plus, assign: User };
@@ -132,6 +191,12 @@ export default function LeadDetails() {
               <p className="text-sm font-semibold text-gray-700">{lead.source || '—'}</p>
             </div>
             <div className="flex gap-2 flex-wrap">
+              {status === 'Qualified' && (
+                <button onClick={convertToOpportunity}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 rounded-xl text-sm font-semibold transition-all shadow-sm">
+                  <Target size={15} /> Make Opportunity
+                </button>
+              )}
               {lead.phone && (
                 <button onClick={() => setCallOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 rounded-xl text-sm font-semibold transition-all">
@@ -143,10 +208,10 @@ export default function LeadDetails() {
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 border border-[#25D366]/30 rounded-xl text-sm font-semibold transition-all">
                 <MessageCircle size={15} /> WhatsApp
               </a>
-              <a href={`mailto:${lead.email}`}
+              <button onClick={() => setEmailOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-xl text-sm font-semibold transition-all">
                 <Mail size={15} /> Email
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -164,14 +229,17 @@ export default function LeadDetails() {
             <div className="space-y-3">
               {[
                 { icon: Phone,      label: 'Phone',          value: lead.phone,                       clickable: !!lead.phone },
+                { icon: Phone,      label: 'Alt Phone',      value: lead.alternatePhone,              clickable: !!lead.alternatePhone },
                 { icon: Mail,       label: 'Email',          value: lead.email },
                 { icon: Building2,  label: 'Company',        value: lead.company },
                 { icon: User,       label: 'Contact Person', value: lead.contactPerson || null },
+                { icon: User,       label: 'Designation',    value: lead.designation || null },
                 { icon: DollarSign, label: 'Deal Value',     value: lead.value ? `₹${lead.value}` : '—' },
+                { icon: DollarSign, label: 'Budget',         value: lead.budget ? `₹${lead.budget}` : null },
                 { icon: Globe,      label: 'Source',         value: lead.source },
                 { icon: User,       label: 'Assigned',       value: lead.assignedTo || 'Unassigned' },
                 { icon: Calendar,   label: 'Follow-up',      value: lead.followUpDate || '—' },
-              ].filter(item => item.value !== null && item.value !== undefined).map(({ icon: Icon, label, value, clickable }) => (
+              ].filter(item => item.value !== null && item.value !== undefined && item.value !== '').map(({ icon: Icon, label, value, clickable }) => (
                 <div key={label} className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
                     <Icon size={13} className="text-gray-400" />
@@ -219,16 +287,26 @@ export default function LeadDetails() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Update Status</h3>
             <div className="grid grid-cols-2 gap-2">
               {statusOptions.map(s => {
-                const c = statusConfig[s];
+                const c = statusConfig[s] || statusConfig.New;
                 return (
                   <button key={s} onClick={() => handleStatusChange(s)}
-                    className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all
+                    className={`py-2 px-3 rounded-xl text-[11px] font-semibold border transition-all
                       ${status === s ? `${c.color} text-white border-transparent shadow-sm` : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'}`}>
                     {s}
                   </button>
                 );
               })}
             </div>
+            {showLostPrompt && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl space-y-2">
+                <p className="text-xs font-semibold text-red-700">Please provide a reason for losing this lead:</p>
+                <Input value={lostReason} onChange={e => setLostReason(e.target.value)} placeholder="e.g. Too expensive, Chose competitor" />
+                <div className="flex justify-end gap-2">
+                  <SecondaryButton onClick={() => setShowLostPrompt(false)}>Cancel</SecondaryButton>
+                  <PrimaryButton onClick={confirmLost} className="!bg-red-600 hover:!bg-red-700">Confirm Lost</PrimaryButton>
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Schedule Follow-up */}
@@ -322,9 +400,15 @@ export default function LeadDetails() {
                 { label: 'Lead ID',       value: `#${lead.id}` },
                 { label: 'Created On',    value: lead.createdAt },
                 { label: 'Source',        value: lead.source || '—' },
+                { label: 'Priority',      value: lead.priority || '—' },
                 { label: 'Assigned To',   value: lead.assignedTo || 'Unassigned' },
                 { label: 'Deal Value',    value: lead.value ? `₹${lead.value}` : '—' },
                 { label: 'Status',        value: status },
+                ...(lead.lostReason   ? [{ label: 'Lost Reason',   value: lead.lostReason }] : []),
+                ...(lead.requirement  ? [{ label: 'Requirement',   value: lead.requirement }] : []),
+                ...(lead.location     ? [{ label: 'Location',      value: lead.location }] : []),
+                ...(lead.industry     ? [{ label: 'Industry',      value: lead.industry }] : []),
+                ...(lead.companySize  ? [{ label: 'Company Size',  value: lead.companySize }] : []),
                 ...(lead.pinCode      ? [{ label: 'Pin Code',      value: lead.pinCode }] : []),
                 ...(lead.typeOfCare   ? [{ label: 'Type of Care',  value: lead.typeOfCare }] : []),
                 ...(lead.hospitalZone ? [{ label: 'Hospital Zone', value: lead.hospitalZone }] : []),
@@ -341,6 +425,32 @@ export default function LeadDetails() {
       </div>
 
       {callOpen && <CallPanel lead={lead} onClose={() => setCallOpen(false)} />}
+
+      {emailOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Mail className="text-blue-500" /> Send Email to {lead.contactPerson || lead.name}
+            </h2>
+            <div className="space-y-4">
+              <Input label="Subject" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Email subject..." />
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Message</label>
+                <textarea 
+                  value={emailMessage} 
+                  onChange={e => setEmailMessage(e.target.value)} 
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none min-h-[120px]"
+                  placeholder="Type your message here..."
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6 justify-end">
+              <SecondaryButton onClick={() => setEmailOpen(false)}>Cancel</SecondaryButton>
+              <PrimaryButton onClick={sendEmail}>Send Email</PrimaryButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -128,8 +128,8 @@ export default function AssignLeads() {
   const { leads, assignLead } = useData();
   const { teamMembers, currentUser } = useAuth();
 
-  // Only Super Admin and Admin can access this page
-  const canAccess = currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin';
+  // Only Super Admin, Admin, Manager, and Team Leader can access this page
+  const canAccess = ['Super Admin', 'Admin', 'Manager', 'Team Leader'].includes(currentUser?.role);
   if (!canAccess) return (
     <div className="flex flex-col items-center justify-center py-24 gap-3">
       <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center">
@@ -192,7 +192,7 @@ export default function AssignLeads() {
   };
 
   const handleRoundRobin = async () => {
-    const execs = teamMembers.filter(m => m.role === 'Sales Executive');
+    const execs = teamMembers.filter(m => ['Sales Executive', 'Sales Employee', 'Telecaller'].includes(m.role));
     if (execs.length === 0) return;
     const unassignedIds = unassigned.map(l => l.id);
     const assignments = {};
@@ -407,17 +407,17 @@ export default function AssignLeads() {
           <p className="text-xs text-blue-500 mt-1">Leads will be distributed evenly across all Sales Executives.</p>
         </div>
         <div className="space-y-2">
-          {teamMembers.filter(m => m.role === 'Sales Executive').map(m => (
+          {teamMembers.filter(m => ['Sales Executive', 'Sales Employee', 'Telecaller'].includes(m.role)).map(m => (
             <div key={m.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
               <span className="text-sm text-gray-700">{m.name}</span>
               <span className="text-xs text-blue-500 font-semibold">
-                ~{teamMembers.filter(x => x.role === 'Sales Executive').length > 0
-                  ? Math.ceil(unassigned.length / teamMembers.filter(x => x.role === 'Sales Executive').length)
+                ~{teamMembers.filter(x => ['Sales Executive', 'Sales Employee', 'Telecaller'].includes(x.role)).length > 0
+                  ? Math.ceil(unassigned.length / teamMembers.filter(x => ['Sales Executive', 'Sales Employee', 'Telecaller'].includes(x.role)).length)
                   : 0} leads
               </span>
             </div>
           ))}
-          {teamMembers.filter(m => m.role === 'Sales Executive').length === 0 && (
+          {teamMembers.filter(m => ['Sales Executive', 'Sales Employee', 'Telecaller'].includes(m.role)).length === 0 && (
             <p className="text-sm text-gray-400 text-center py-2">No Sales Executives found.</p>
           )}
         </div>
